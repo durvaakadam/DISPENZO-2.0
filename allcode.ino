@@ -8,6 +8,8 @@
 #include <WiFi.h>
 #include <BlynkSimpleEsp32.h>
 #include <LiquidCrystal.h>
+#include <OneWire.h>
+#include <DallasTemperature.h>
 
 // ---------------- HX711 Load Cell ----------------
 #define LOADCELL_DOUT_PIN 4  // DT
@@ -24,6 +26,12 @@ bool weightActive = false;
 #define RST_PIN 33   // RST
 MFRC522 rfid(SS_PIN, RST_PIN);
 bool rfidActive = false;
+
+// ---------------- Temperature -----------------
+#define ONE_WIRE_BUS 14// GPIO for DS18B20
+OneWire oneWire(ONE_WIRE_BUS);
+DallasTemperature sensors(&oneWire);
+bool tempActive = false;
 
 // ---------------- Notifications -----------------
 bool sendNotification = false; // Control sending notification
@@ -68,6 +76,10 @@ void setup() {
   SPI.begin(5, 19, 23, 14); // SCK=5, MISO=19, MOSI=23, SS=14
   rfid.PCD_Init();
   Serial.println("✅ RFID Ready!");
+
+  // ---- Temperature Setup ----
+  sensors.begin();
+  Serial.println("🌡️ Temperature Sensor Ready!");
 
   // ---- Blynk Setup ----
   Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
@@ -140,6 +152,14 @@ void loop() {
       lcd.setCursor(0,1);
       lcd.print("UID:          "); 
     }
+    else if (command.equalsIgnoreCase("TEMP")) { 
+      tempActive = true; 
+      Serial.println("🌡️ Temperature Reading STARTED"); 
+    }
+    else if (command.equalsIgnoreCase("TSTOP")) { 
+      tempActive = false; 
+      Serial.println("🌡️ Temperature Reading STOPPED"); 
+    }
     else if (command.equalsIgnoreCase("SEND")) {
       sendNotification = true;
       Serial.println("📨 Sending notification...");
@@ -200,5 +220,18 @@ void loop() {
       lcd.print(weight);
       lcd.print(" g   "); // spaces to clear old chars
     }
+  }
+
+  // ---- Temperature Reading ----
+  if (tempActive) {
+    sensors.requestTemperatures();
+    float tempC = sensors.getTempCByIndex(0);
+    Serial.print("Temperature: "); Serial.print(tempC); Serial.println(" °C");
+
+    // Example alert
+    if (tempC > 35) {
+      Serial.println("⚠️ High Temperature Alert!");
+    }
+    delay(2000); // read every 2 seconds
   }
 }
