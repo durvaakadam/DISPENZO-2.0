@@ -6,7 +6,7 @@ import { collection, getDocs } from "firebase/firestore";
 
 import "./Rfid.css";
 
-const razorpayApiKey = "rzp_test_22YpxagEoYtImx";
+const razorpayApiKey = "";
 const socket = io("http://localhost:5000");
 
 function Rfid() {
