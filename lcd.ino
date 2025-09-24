@@ -1,7 +1,7 @@
 #include <LiquidCrystal.h>
 
 // RS, E, D4, D5, D6, D7
-LiquidCrystal lcd(21, 22, 19, 18, 5, 4);
+LiquidCrystal lcd(21, 22, 19, 18, 5, 15);
 
 void setup() {
   lcd.begin(16, 2);          // initialize the 16x2 LCD
