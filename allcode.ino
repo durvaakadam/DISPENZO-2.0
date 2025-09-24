@@ -7,6 +7,7 @@
 #include "HX711.h"
 #include <WiFi.h>
 #include <BlynkSimpleEsp32.h>
+#include <LiquidCrystal.h>
 
 // ---------------- HX711 Load Cell ----------------
 #define LOADCELL_DOUT_PIN 4  // DT
@@ -34,6 +35,14 @@ char pass[] = "12345678";
 // Timer for non-blocking weight reading
 unsigned long lastWeightPrint = 0;
 const unsigned long weightInterval = 1000;
+
+// Timer for RFID default UID
+unsigned long rfidStartTime = 0;
+bool defaultUIDShown = false; // flag to show default UID only once
+
+// ---------------- LCD ----------------
+// RS, E, D4, D5, D6, D7
+LiquidCrystal lcd(21, 22, 19, 18, 5, 15);
 
 void setup() {
   Serial.begin(115200);
@@ -63,14 +72,22 @@ void setup() {
   // ---- Blynk Setup ----
   Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
   Serial.println("ESP32 Connected to Blynk ✅");
+
+  // ---- LCD Setup ----
+  lcd.begin(16, 2);
+  lcd.print("Weight System");
+  lcd.setCursor(0, 1);
+  lcd.print("Initializing...");
+  delay(2000);
+  lcd.clear();
 }
 
 // ---- Blynk Virtual Pins ----
 // V1 = Solenoid ON/OFF
 BLYNK_WRITE(V1) {
   int value = param.asInt();
-  if (value == 1) { digitalWrite(RELAY_PIN, LOW); Serial.println("💧 Solenoid ON via Blynk"); }
-  else { digitalWrite(RELAY_PIN, HIGH); Serial.println("❌ Solenoid OFF via Blynk"); }
+  digitalWrite(RELAY_PIN, value ? LOW : HIGH);
+  Serial.println(value ? "💧 Solenoid ON via Blynk" : "❌ Solenoid OFF via Blynk");
 }
 
 // V2 = Start/Stop weight measurement
@@ -84,10 +101,19 @@ BLYNK_WRITE(V2) {
 BLYNK_WRITE(V3) {
   int value = param.asInt();
   rfidActive = (value == 1);
+  rfidStartTime = millis(); // reset timer for default UID
+  defaultUIDShown = false;  // reset flag for new scan
   Serial.println(rfidActive ? "🔎 RFID SCAN STARTED via Blynk" : "⏹️ RFID SCAN STOPPED via Blynk");
+
+  if (rfidActive) {
+    lcd.setCursor(0, 1);
+    lcd.print("UID: -- -- --");
+  } else {
+    lcd.setCursor(0, 1);
+    lcd.print("UID:          "); // clear row
+  }
 }
 
-// ---- Main loop ----
 void loop() {
   Blynk.run();
 
@@ -100,8 +126,20 @@ void loop() {
     else if (command.equalsIgnoreCase("OFF")) { digitalWrite(RELAY_PIN, HIGH); Serial.println("❌ Solenoid OFF"); }
     else if (command.equalsIgnoreCase("START")) { weightActive = true; Serial.println("📊 Weight STARTED"); }
     else if (command.equalsIgnoreCase("STOP")) { weightActive = false; Serial.println("⏹️ Weight STOPPED"); }
-    else if (command.equalsIgnoreCase("SCAN")) { rfidActive = true; Serial.println("🔎 RFID SCAN STARTED"); }
-    else if (command.equalsIgnoreCase("STOPSCAN")) { rfidActive = false; Serial.println("⏹️ RFID SCAN STOPPED"); }
+    else if (command.equalsIgnoreCase("SCAN")) { 
+      rfidActive = true; 
+      rfidStartTime = millis();
+      defaultUIDShown = false;
+      Serial.println("🔎 RFID SCAN STARTED"); 
+      lcd.setCursor(0,1);
+      lcd.print("UID: -- -- --"); 
+    }
+    else if (command.equalsIgnoreCase("STOPSCAN")) { 
+      rfidActive = false; 
+      Serial.println("⏹️ RFID SCAN STOPPED"); 
+      lcd.setCursor(0,1);
+      lcd.print("UID:          "); 
+    }
     else if (command.equalsIgnoreCase("SEND")) {
       sendNotification = true;
       Serial.println("📨 Sending notification...");
@@ -117,28 +155,50 @@ void loop() {
   // ---- RFID Scanning ----
   if (rfidActive) {
     if (rfid.PICC_IsNewCardPresent() && rfid.PICC_ReadCardSerial()) {
-      Serial.print("Card UID: ");
+      String uidStr = "";
       for (byte i = 0; i < rfid.uid.size; i++) {
-        if (rfid.uid.uidByte[i] < 0x10) Serial.print("0");
-        Serial.print(rfid.uid.uidByte[i], HEX); Serial.print(" ");
+        if (rfid.uid.uidByte[i] < 0x10) uidStr += "0";
+        uidStr += String(rfid.uid.uidByte[i], HEX);
+        if (i < rfid.uid.size - 1) uidStr += " ";
       }
-      Serial.println();
       rfid.PICC_HaltA();
+      Serial.print("Card UID: "); Serial.println(uidStr);
+
+      // LCD: display actual UID
+      lcd.setCursor(0,1);
+      lcd.print("UID: " + uidStr + "  "); // extra spaces to clear old chars
+
+      defaultUIDShown = true; // prevent default UID from showing
+    }
+    else if (!defaultUIDShown && millis() - rfidStartTime >= 3000) {
+      // Show default UID only once after 3 seconds
+      String defaultUID = "52 34 25";
+      Serial.print("Default UID: "); Serial.println(defaultUID);
+      lcd.setCursor(0,1);
+      lcd.print("UID: " + defaultUID + "  ");
+      defaultUIDShown = true;
     }
   }
 
-  // ---- Weight Reading ---- (non-blocking)
+  // ---- Weight Reading ----
   if (weightActive && scale.is_ready()) {
     if (millis() - lastWeightPrint >= weightInterval) {
       lastWeightPrint = millis();
       long weight = scale.get_units(10);
       float weight_oz = weight / 28.34952;
 
+      // Serial output
       Serial.print("Weight: "); Serial.print(weight);
       Serial.print(" g | "); Serial.print(weight_oz, 2); Serial.println(" oz");
 
-      // Optional: send to Blynk V4
+      // Blynk
       Blynk.virtualWrite(V4, weight);
+
+      // LCD: update weight only (row 0)
+      lcd.setCursor(0,0);
+      lcd.print("Weight: ");
+      lcd.print(weight);
+      lcd.print(" g   "); // spaces to clear old chars
     }
   }
 }
