@@ -2,6 +2,7 @@
 #define BLYNK_TEMPLATE_NAME "DISPENZO2"
 #define BLYNK_AUTH_TOKEN    "9Lb6XZtHooS-pcBEUNRXgsWBih5Y634l"
 
+#include <ESP32Servo.h>
 #include <SPI.h>
 #include <MFRC522.h>
 #include "HX711.h"
@@ -11,11 +12,14 @@
 #include <OneWire.h>
 #include <DallasTemperature.h>
 
+// ---------------- Servo ----------------
+Servo armServo;
+
 // ---------------- HX711 Load Cell ----------------
 #define LOADCELL_DOUT_PIN 4  // DT
 #define LOADCELL_SCK_PIN 2   // SCK
 HX711 scale;
-float CALIBRATION_FACTOR = -290.0; // Adjust after calibration
+float CALIBRATION_FACTOR = 290.0; // Adjust after calibration
 bool weightActive = false;
 
 // EMA smoothing parameters
@@ -25,6 +29,9 @@ float zeroThreshold = 2.0; // below this weight treated as 0
 
 // ---------------- Relay (Solenoid) ----------------
 #define RELAY_PIN 26  // Solenoid control
+bool solenoidActive = false;
+unsigned long solenoidStartTime = 0;
+const unsigned long SOLENOID_ON_DURATION = 5000; // 5 seconds
 
 // ---------------- RFID -----------------
 #define SS_PIN 14    // SDA
@@ -33,7 +40,7 @@ MFRC522 rfid(SS_PIN, RST_PIN);
 bool rfidActive = false;
 
 // ---------------- Temperature -----------------
-#define ONE_WIRE_BUS 14// GPIO for DS18B20
+#define ONE_WIRE_BUS 14 // GPIO for DS18B20
 OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
 bool tempActive = false;
@@ -53,6 +60,10 @@ const unsigned long weightInterval = 200; // faster reading
 unsigned long rfidStartTime = 0;
 bool defaultUIDShown = false; // flag to show default UID only once
 
+int weightReadCount = 0;
+const int MAX_WEIGHT_READINGS = 30;
+
+
 // ---------------- LCD ----------------
 // RS, E, D4, D5, D6, D7
 LiquidCrystal lcd(21, 22, 19, 18, 5, 15);
@@ -60,6 +71,10 @@ LiquidCrystal lcd(21, 22, 19, 18, 5, 15);
 void setup() {
   Serial.begin(115200);
   delay(1000);
+
+  // ---- Servo Setup ----
+  armServo.attach(13);
+  Serial.println("⚡ Servo ready. Send RIGHT or LEFT command via Serial.");
 
   // ---- HX711 Setup ----
   scale.begin(LOADCELL_DOUT_PIN, LOADCELL_SCK_PIN);
@@ -106,8 +121,16 @@ void setup() {
 // V1 = Solenoid ON/OFF
 BLYNK_WRITE(V1) {
   int value = param.asInt();
-  digitalWrite(RELAY_PIN, value ? LOW : HIGH);
-  Serial.println(value ? "💧 Solenoid ON via Blynk" : "❌ Solenoid OFF via Blynk");
+  if (value) {
+    digitalWrite(RELAY_PIN, LOW);
+    solenoidActive = true;
+    solenoidStartTime = millis();
+    Serial.println("💧 Solenoid ON via Blynk");
+  } else {
+    digitalWrite(RELAY_PIN, HIGH);
+    solenoidActive = false;
+    Serial.println("❌ Solenoid OFF via Blynk");
+  }
 }
 
 // V2 = Start/Stop weight measurement
@@ -142,8 +165,17 @@ void loop() {
     String command = Serial.readStringUntil('\n');
     command.trim();
 
-    if (command.equalsIgnoreCase("ON")) { digitalWrite(RELAY_PIN, LOW); Serial.println("💧 Solenoid ON"); }
-    else if (command.equalsIgnoreCase("OFF")) { digitalWrite(RELAY_PIN, HIGH); Serial.println("❌ Solenoid OFF"); }
+    if (command.equalsIgnoreCase("ON")) { 
+      digitalWrite(RELAY_PIN, LOW);
+      solenoidActive = true;
+      solenoidStartTime = millis();
+      Serial.println("💧 Solenoid ON"); 
+    }
+    else if (command.equalsIgnoreCase("OFF")) { 
+      digitalWrite(RELAY_PIN, HIGH);
+      solenoidActive = false;
+      Serial.println("❌ Solenoid OFF"); 
+    }
     else if (command.equalsIgnoreCase("START")) { weightActive = true; Serial.println("📊 Weight STARTED"); }
     else if (command.equalsIgnoreCase("STOP")) { weightActive = false; Serial.println("⏹️ Weight STOPPED"); }
     else if (command.equalsIgnoreCase("SCAN")) { 
@@ -160,29 +192,21 @@ void loop() {
       lcd.setCursor(0,1);
       lcd.print("UID:          "); 
     }
-    else if (command.equalsIgnoreCase("TEMP")) { 
-      tempActive = true; 
-      Serial.println("🌡️ Temperature Reading STARTED"); 
-    }
-    else if (command.equalsIgnoreCase("TSTOP")) { 
-      tempActive = false; 
-      Serial.println("🌡️ Temperature Reading STOPPED"); 
-    }
-    else if (command.equalsIgnoreCase("SEND")) {
-      sendNotification = true;
-      Serial.println("📨 Sending notification...");
-      Blynk.logEvent("notification", "Hello from GROUP 2");
-    }
-    else if (command.equalsIgnoreCase("STOPSEND")) {
-      sendNotification = false;
-      Serial.println("📨 Notifications DISABLED");
-    }
-    else if (command.equalsIgnoreCase("T")) {  // Tare command
-      scale.tare();
-      smoothedWeight = 0.0;
-      Serial.println("⚡ Scale Tared via Serial!");
-    }
+    else if (command.equalsIgnoreCase("TEMP")) { tempActive = true; Serial.println("🌡️ Temperature Reading STARTED"); }
+    else if (command.equalsIgnoreCase("TSTOP")) { tempActive = false; Serial.println("🌡️ Temperature Reading STOPPED"); }
+    else if (command.equalsIgnoreCase("SEND")) { sendNotification = true; Serial.println("📨 Sending notification..."); Blynk.logEvent("notification", "WELCOME TO DISPENZO!"); }
+    else if (command.equalsIgnoreCase("STOPSEND")) { sendNotification = false; Serial.println("📨 Notifications DISABLED"); }
+    else if (command.equalsIgnoreCase("T")) { scale.tare(); smoothedWeight = 0.0; Serial.println("⚡ Scale Tared via Serial!"); }
+    else if (command.equalsIgnoreCase("RIGHT")) { armServo.write(0); Serial.println("⬅️ Servo moved RIGHT (0°)"); }
+    else if (command.equalsIgnoreCase("LEFT")) { armServo.write(90); Serial.println("➡️ Servo moved LEFT (90°)"); }
     else { Serial.println("⚠️ Unknown command."); }
+  }
+
+  // ---- Auto turn OFF solenoid after 5 seconds ----
+  if (solenoidActive && millis() - solenoidStartTime >= SOLENOID_ON_DURATION) {
+    digitalWrite(RELAY_PIN, HIGH);
+    solenoidActive = false;
+    Serial.println("❌ Solenoid OFF (auto)");
   }
 
   // ---- RFID Scanning ----
@@ -196,16 +220,12 @@ void loop() {
       }
       rfid.PICC_HaltA();
       Serial.print("Card UID: "); Serial.println(uidStr);
-
-      // LCD: display actual UID
       lcd.setCursor(0,1);
-      lcd.print("UID: " + uidStr + "  "); // extra spaces to clear old chars
-
-      defaultUIDShown = true; // prevent default UID from showing
+      lcd.print("UID: " + uidStr + "  "); 
+      defaultUIDShown = true;
     }
     else if (!defaultUIDShown && millis() - rfidStartTime >= 3000) {
-      // Show default UID only once after 3 seconds
-      String defaultUID = "52 34 25";
+      String defaultUID = "73 69 83 02";
       Serial.print("Default UID: "); Serial.println(defaultUID);
       lcd.setCursor(0,1);
       lcd.print("UID: " + defaultUID + "  ");
@@ -217,30 +237,26 @@ void loop() {
   if (weightActive && scale.is_ready()) {
     if (millis() - lastWeightPrint >= weightInterval) {
       lastWeightPrint = millis();
-
-      // Take average of 10 readings
       float weight = scale.get_units(10);
-
-      // Apply EMA smoothing
       smoothedWeight = alpha * weight + (1 - alpha) * smoothedWeight;
-
-      // Auto-zero small fluctuations
       if (abs(smoothedWeight) < zeroThreshold) smoothedWeight = 0.0;
-
       float weight_oz = smoothedWeight / 28.34952;
 
-      // Serial output
       Serial.print("Weight: "); Serial.print(smoothedWeight,1);
       Serial.print(" g | "); Serial.print(weight_oz,2); Serial.println(" oz");
 
-      // Blynk
       Blynk.virtualWrite(V4, smoothedWeight);
 
-      // LCD: update weight only (row 0)
       lcd.setCursor(0,0);
       lcd.print("Weight: ");
       lcd.print(smoothedWeight,1);
-      lcd.print(" g   "); // clear extra chars
+      lcd.print(" g   ");
+      weightReadCount++;
+    if (weightReadCount >= MAX_WEIGHT_READINGS) {
+      weightActive = false;
+      Serial.println("⏹️ Max weight readings reached (30). Stopping...");
+      weightReadCount = 0; // reset counter for next session
+    }
     }
   }
 
@@ -249,11 +265,7 @@ void loop() {
     sensors.requestTemperatures();
     float tempC = sensors.getTempCByIndex(0);
     Serial.print("Temperature: "); Serial.print(tempC); Serial.println(" °C");
-
-    // Example alert
-    if (tempC > 35) {
-      Serial.println("⚠️ High Temperature Alert!");
-    }
-    delay(500); // read every 2 seconds
+    if (tempC > 35) Serial.println("⚠️ High Temperature Alert!");
+    delay(500); // read every 0.5 sec
   }
 }

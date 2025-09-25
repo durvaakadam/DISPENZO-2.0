@@ -52,6 +52,23 @@ parser.on("data", async (data) => {
   const message = data.trim();
   const currentTime = Date.now();
   console.log("📥 Serial data received:", message); // debug all serial messages
+  // ULTRASONIC 
+
+  // ------------------- Ultrasonic / Grain Level -------------------
+// if (message.startsWith("Distance from sensor:")) {
+//   io.emit("ultraData", message);  // send distance line to frontend
+//   return;
+// }
+
+// if (message.startsWith("Fill level:")) {
+//   io.emit("ultraData", message);  // send fill level line to frontend
+//   return;
+// }
+
+// if (message.includes("⚠️ Low Stock Detected!")) {
+//   io.emit("lowStockAlert", message); // low stock alert
+//   return;
+// }
 
   // ------------------- RFID -------------------
   // Match any UID format, including Default UID
@@ -86,7 +103,7 @@ parser.on("data", async (data) => {
       if (latestWeight >= weightThreshold && !motorStopped) {
   console.log(`🛑 Threshold (${weightThreshold} g) reached. Stopping motor...`);
   esp32.write("STOP\n");   // stop weight logic
-  esp32.write("RIGHT\n");  // move arm RIGHT
+  esp32.write("LEFT\n");  // move arm RIGHT
   motorStopped = true;
 }
 
@@ -127,7 +144,7 @@ io.on("connection", (socket) => {
   esp32.write("START\n");
 
   // 2️⃣ Immediately move servo LEFT
-  esp32.write("LEFT\n");
+  esp32.write("RIGHT\n");
 
   socket.emit("dispenseGrainResponse", {
     success: true,
@@ -141,7 +158,23 @@ socket.on("sendNotification", () => {
   socket.emit("notificationResponse", { success: true, message: "Notification sent!" });
 });
 
-  // Scan card
+socket.on("stopTemperature", () => {
+  console.log("Stopping temperature reading on ESP...");
+  esp32.write("TSTOP\n"); // stop continuous reading on ESP
+});
+
+
+socket.on("checkTemperature", () => {
+    console.log("Requesting temperature from ESP...");
+    esp32.write("TEMP\n"); // command must match ESP Serial handler
+  });
+
+  socket.on("checkLevel", () => {
+    console.log("Requesting container level from ESP...");
+    esp32.write("ULTRA\n"); // command must match ESP Serial handler
+  });
+
+
   socket.on("scancard", () => {
     console.log("🎫 Sending SCAN command...");
     esp32.write("SCAN\n");

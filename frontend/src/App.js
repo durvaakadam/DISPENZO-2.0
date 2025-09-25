@@ -6,7 +6,7 @@ import { collection, getDocs } from "firebase/firestore";
 
 import "./Rfid.css";
 
-const razorpayApiKey = "rzp_test_22YpxagEoYtImx";
+const razorpayApiKey = "";
 const socket = io("http://localhost:5000");
 
 function Rfid() {
@@ -20,6 +20,17 @@ function Rfid() {
   const [countdown, setCountdown] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
   const [users, setUsers] = useState([]);
+ const [temperatureValue, setTemperatureValue] = useState(null);
+  const [temperatureAlert, setTemperatureAlert] = useState(false);
+  const [tempActive, setTempActive] = useState(false);
+  const [fillData, setFillData] = useState(null);
+
+
+const [adminView, setAdminView] = useState("users"); // "users" or "monitoring"
+  const [containerLevel, setContainerLevel] = useState(null);
+  const [levelAlert, setLevelAlert] = useState(false);
+  const lowStockThreshold = 20; // % fill below which alert triggers
+
 
   useEffect(() => {
     const script = document.createElement("script");
@@ -28,7 +39,46 @@ function Rfid() {
     document.body.appendChild(script);
   }, []);
 
+const handleCheckLevel = () => {
+  // Emit command to ESP
+  socket.emit("checkLevel");
 
+  // Subscribe to the response only once
+  socket.once("containerLevelUpdate", (data) => {
+    const level = parseFloat(data.percentage);
+    setContainerLevel(level);
+
+    // Trigger low stock alert
+    setLevelAlert(level <= lowStockThreshold);
+  });
+};
+
+useEffect(() => {
+  socket.on("ultrasonicUpdate", (data) => {
+    console.log("📡 Ultrasonic data received:", data);
+    setFillData(data);
+  });
+
+  return () => {
+    socket.off("ultrasonicUpdate");
+  };
+}, []);
+
+useEffect(() => {
+    socket.on("temperatureUpdate", (temp) => {
+      setTemperatureValue(temp);
+
+      // optional alert logic
+      if (temp !== null && temp > 35) {
+        setTemperatureAlert(true);
+      } else {
+        setTemperatureAlert(false);
+      }
+    });
+    return () => {
+      socket.off("temperatureUpdate");
+    };
+  }, []);
 
   useEffect(() => {
   console.log("🔌 Connecting to Socket.IO server...");
@@ -197,113 +247,191 @@ function Rfid() {
     }
   };
   return (
-    <>
+  <>
+    {/* Toggle between Admin/User */}
+    <button className="admin-btn" onClick={() => setIsAdmin(!isAdmin)}>
+      {isAdmin ? "🔙 Go to User Side" : "🔧 Go to Admin Side"}
+    </button>
+    <button className="scan-btn" onClick={scanCard}>
+      {scanning ? "📡 Reading the Card..." : "📡 Scan My Card"}
+    </button>
 
-      <button className="admin-btn" onClick={() => setIsAdmin(!isAdmin)}>
-        {isAdmin ? "🔙 Go to User Side" : "🔧 Go to Admin Side"}
-      </button>
-      <button className="scan-btn" onClick={scanCard}>
-  {scanning ? "📡 Reading the Card..." : "📡 Scan My Card"}
-</button>
-
-
-      <div className="rfid-container">
-        {!isAdmin ? (
-          <>
-            <div className="scanner-box">
+    <div className="rfid-container">
+      {!isAdmin ? (
+        <>
+          {/* User Side */}
+          <div className="scanner-box">
             <div className={`dispenzo-text ${rfidUID ? "move-up" : ""}`}>
-  DISPENZO
+              DISPENZO
+            </div>
+
+            {scanning || !rfidUID ? (
+              <div className="rotating-card">
+                <div className="card-chip"></div>
+                <div className="card-icon">📡</div>
+                <div className="card-text">SCAN YOUR RFID CARD</div>
+              </div>
+            ) : (
+              <p className="uid-display">Scanned UID: {rfidUID}</p>
+            )}
+          </div>
+
+          {rfidUID && !authSuccess && (
+            <div className="input-container">
+              <input
+                type="password"
+                placeholder="Enter Password"
+                value={enteredPassword}
+                onChange={(e) => setEnteredPassword(e.target.value)}
+              />
+              <button onClick={verifyPassword}>Submit</button>
+            </div>
+          )}
+
+          {authSuccess && userData && (
+            <div className="user-info">
+              <h2>
+                <strong>
+                  {dispenseMessage ? dispenseMessage : "✅ Access Granted!"}
+                </strong>
+              </h2>
+              {!dispenseMessage && (
+                <>
+                  <p><strong>Name:</strong> {userData.Name}</p>
+                  <p><strong>Phone:</strong> {userData.phone}</p>
+                  <p><strong>Members in the family:</strong> {userData.family_members}</p>
+                  <p><strong>Weight Allocated:</strong> {userData.weightThreshold}g</p>
+
+                  <div className="button-container">
+                    <button
+                      className="dispense-btn water-btn"
+                      onClick={handleDispenseWater}
+                    >
+                      🚰 Dispense Water
+                    </button>
+                    <button
+                      className="dispense-btn grain-btn"
+                      onClick={handleDispenseGrains}
+                    >
+                      🌾 Dispense Grains
+                    </button>
+                    <button className="payment-btn" onClick={handlePayment}>
+                      💳 Pay Now
+                    </button>
+                    <button
+                      className="notify-btn"
+                      onClick={() => {
+                        socket.emit("sendNotification");
+                        alert("Notification command sent to ESP32!");
+                      }}
+                    >
+                      📨 Send Notification
+                    </button>
+                  </div>
+                </>
+              )}
+            </div>
+          )}
+
+          {dispenseMessage && (
+            <p className="dispense-text">
+              {dispenseMessage} ({countdown}s)
+            </p>
+          )}
+        </>
+      ) : (
+        <>
+          {/* Admin Side */}
+          <div className="admin-panel">
+            <h1>🔧 Admin Panel</h1>
+
+            {/* Admin Toggle Buttons */}
+            <div className="admin-toggle">
+              <button
+                className={adminView === "users" ? "active" : ""}
+                onClick={() => setAdminView("users")}
+              >
+                Users
+              </button>
+              <button
+                className={adminView === "monitoring" ? "active" : ""}
+                onClick={() => setAdminView("monitoring")}
+              >
+                Quality Monitoring
+              </button>
+            </div>
+
+            {/* Users Table */}
+            {adminView === "users" && (
+              <table className="admin-table">
+                <thead>
+                  <tr>
+                    <th>UID</th>
+                    <th>Name</th>
+                    <th>Phone</th>
+                    <th>Family Members</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {users.map((user) => (
+                    <tr key={user.id}>
+                      <td>{user.id}</td>
+                      <td>{user.Name}</td>
+                      <td>{user.phone}</td>
+                      <td>{user.family_members}</td>
+                    </tr>
+                  ))}
+                </tbody>
+              </table>
+            )}
+
+            {/* Monitoring Section */}
+            {/* Monitoring Section */}
+{adminView === "monitoring" && (
+  <div className="monitoring-section">
+    <h2>🌡️ Temperature & 📦 Inventory Monitoring</h2>
+    <div className="monitoring-cards">
+      
+      <div className={`monitor-card ${temperatureAlert ? "alert" : ""}`}>
+  <h3>Temperature</h3>
+  <p>{temperatureValue !== null ? `${temperatureValue} °C` : "—"}</p>
+  {temperatureAlert && <p className="alert-text">⚠️ High Temperature!</p>}
+  <button
+    onClick={() => {
+      if (!tempActive) {
+        socket.emit("checkTemperature"); // start reading
+        setTempActive(true);
+      } else {
+        socket.emit("stopTemperature"); // stop reading
+        setTempActive(false);
+      }
+    }}
+    className="check-btn"
+  >
+    {tempActive ? "Stop Temperature" : "Check Temperature"}
+  </button>
 </div>
 
 
-              {scanning || !rfidUID ? (
-                <div className="rotating-card">
-                  <div className="card-chip"></div>
-                  <div className="card-icon">📡</div>
-                  <div className="card-text">SCAN YOUR RFID CARD</div>
-                </div>
-              ) : (
-                <p className="uid-display">Scanned UID: {rfidUID}</p>
-              )}
-            </div>
+      <div className={`monitor-card ${levelAlert ? "alert" : ""}`}>
+      <h3>Container Level</h3>
+      <p>{containerLevel !== null ? `${containerLevel}%` : "—"}</p>
+      {levelAlert && <p className="alert-text">⚠️ Low Inventory!</p>}
+     <button onClick={handleCheckLevel} className="check-btn">
+  Check Level
+</button>
 
-            {rfidUID && !authSuccess && (
-              <div className="input-container">
-                <input
-                  type="password"
-                  placeholder="Enter Password"
-                  value={enteredPassword}
-                  onChange={(e) => setEnteredPassword(e.target.value)}
-                />
-                <button onClick={verifyPassword}>Submit</button>
-              </div>
-            )}
+    </div>
 
-            {authSuccess && userData && (
-              <div className="user-info">
-                <h2><strong>{dispenseMessage ? dispenseMessage : "✅ Access Granted!"}</strong></h2>
-                {!dispenseMessage && (
-                  <>
-                    <p><strong>Name:</strong> {userData.Name}</p>
-                    <p><strong>Phone:</strong> {userData.phone}</p>
-                    <p><strong>members in the family:</strong> {userData.family_members}</p>
-                    <p><strong>Weight Allocated:</strong> {userData.weightThreshold}g</p>
+    </div>
+  </div>
+)}
 
-                    <div className="button-container">
-                      <button className="dispense-btn water-btn" onClick={handleDispenseWater}>
-                        🚰 Dispense Water
-                      </button>
-                      <button className="dispense-btn grain-btn" onClick={handleDispenseGrains}>
-                        🌾 Dispense Grains
-                      </button>
-                      <button className="payment-btn" onClick={handlePayment}>
-                        💳 Pay Now
-                      </button>
-                       <button 
-    className="notify-btn" 
-    onClick={() => {
-      socket.emit("sendNotification");
-      alert("Notification command sent to ESP32!");
-    }}
-  >
-    📨 Send Notification
-  </button>
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
-
-            {dispenseMessage && <p className="dispense-text">{dispenseMessage} ({countdown}s)</p>}
-          </>
-        ) : (
-          <div className="admin-panel">
-            <h1>🔧 Admin Panel</h1>
-            <table className="admin-table">
-              <thead>
-                <tr>
-                  <th>UID</th>
-                  <th>Name</th>
-                  <th>Phone</th>
-                  <th>Family Members</th>
-                </tr>
-              </thead>
-              <tbody>
-                {users.map((user) => (
-                  <tr key={user.id}>
-                    <td>{user.id}</td>
-                    <td>{user.Name}</td>
-                    <td>{user.phone}</td>
-                    <td>{user.family_members}</td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
           </div>
-        )}
-      </div>
-    </>
-  );
+        </>
+      )}
+    </div>
+  </>
+);
 }
-
 export default Rfid;

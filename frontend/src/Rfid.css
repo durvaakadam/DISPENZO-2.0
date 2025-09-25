@@ -191,40 +191,6 @@
 }
 
 
-/* Admin Table */
-.admin-table {
-    width: 100%;
-    border-collapse: collapse;
-    margin-top: 15px;
-    border-radius: 10px;
-    overflow: hidden;
-}
-
-.admin-table th,
-.admin-table td {
-    padding: 14px;
-    text-align: left;
-    color: #fff;
-}
-
-.admin-table th {
-    background-color: #3e3f5e;
-    color: white;
-    font-weight: bold;
-}
-
-.admin-table tr {
-    background-color: #252836;
-    transition: 0.3s;
-}
-
-.admin-table tr:nth-child(even) {
-    background-color: #2f3143;
-}
-
-.admin-table tr:hover {
-    background-color: #3e4055;
-}
 
 /* Input & Button */
 .input-container {
@@ -389,3 +355,90 @@ button:hover {
     text-align: left;
 }
 
+
+/* Admin Table */
+.admin-table {
+    width: 100%;
+    border-collapse: collapse;
+    margin-top: 15px;
+    border-radius: 10px;
+    overflow: hidden;
+}
+
+.admin-table th,
+.admin-table td {
+    padding: 14px;
+    text-align: left;
+    color: #fff;
+}
+
+.admin-table th {
+    background-color: #3e3f5e;
+    color: white;
+    font-weight: bold;
+}
+
+.admin-table tr {
+    background-color: #252836;
+    transition: 0.3s;
+}
+
+.admin-table tr:nth-child(even) {
+    background-color: #2f3143;
+}
+
+.admin-table tr:hover {
+    background-color: #3e4055;
+}
+
+/* ---------------- Monitoring Section ---------------- */
+.monitoring-section {
+  margin-top: 20px;
+}
+
+.monitoring-cards {
+  display: flex;
+  gap: 20px;
+  flex-wrap: wrap;
+}
+
+.monitor-card {
+  flex: 1 1 200px;
+  background-color: #252836; /* match admin table row */
+  color: #fff;               /* text color white */
+  padding: 20px;
+  border-radius: 12px;
+  box-shadow: 0 2px 10px rgba(0,0,0,0.3);
+  text-align: center;
+  transition: 0.3s;
+}
+
+.monitor-card h3 {
+  margin-bottom: 10px;
+  font-size: 18px;
+  color: #f0f0f0;
+}
+
+.monitor-card p {
+  font-size: 16px;
+  font-weight: 500;
+  color: #fff;
+}
+
+.monitor-card.alert {
+  border: 2px solid #f37254;
+  background-color: #3e3f5e; /* dark alert card */
+}
+
+.alert-text {
+  margin-top: 8px;
+  color: #f37254;
+  font-weight: 600;
+}
+
+/* ---------------- Responsive ---------------- */
+@media (max-width: 768px) {
+  .monitoring-cards {
+    flex-direction: column;
+  }
+}
