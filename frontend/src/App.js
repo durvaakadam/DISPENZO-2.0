@@ -15,7 +15,7 @@ function Rfid() {
   const [authSuccess, setAuthSuccess] = useState(false);
   const [error, setError] = useState("");
   const [userData, setUserData] = useState(null);
-  const [scanning, setScanning] = useState(true);
+  const [scanning, setScanning] = useState(false);
   const [dispenseMessage, setDispenseMessage] = useState("");
   const [countdown, setCountdown] = useState(0);
   const [isAdmin, setIsAdmin] = useState(false);
@@ -27,6 +27,8 @@ function Rfid() {
     script.async = true;
     document.body.appendChild(script);
   }, []);
+
+
 
   useEffect(() => {
   console.log("🔌 Connecting to Socket.IO server...");
@@ -204,6 +206,7 @@ function Rfid() {
   {scanning ? "📡 Reading the Card..." : "📡 Scan My Card"}
 </button>
 
+
       <div className="rfid-container">
         {!isAdmin ? (
           <>
@@ -256,6 +259,15 @@ function Rfid() {
                       <button className="payment-btn" onClick={handlePayment}>
                         💳 Pay Now
                       </button>
+                       <button 
+    className="notify-btn" 
+    onClick={() => {
+      socket.emit("sendNotification");
+      alert("Notification command sent to ESP32!");
+    }}
+  >
+    📨 Send Notification
+  </button>
                     </div>
                   </>
                 )}

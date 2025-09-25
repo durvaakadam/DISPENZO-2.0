@@ -119,16 +119,17 @@
 }
 
 .uid-display {
-    font-size: 24px;
+    font-size: 42px;   /* increased from 24px */
     font-weight: bold;
     color: #fff;
-    padding: 14px;
-    border: 2px solid #fff;
-    border-radius: 8px;
+    padding: 30px;     /* increased from 14px */
+    border: 3px solid #fff; /* thicker border */
+    border-radius: 10px;
     display: inline-block;
     background-color: rgba(255, 255, 255, 0.2);
-    margin-top: 20px;
+    margin-top: 24px;
 }
+
 
 /* Panel Header */
 .admin-panel h1 {
@@ -162,20 +163,27 @@
     transform: scale(1.05);
   }
   
-.scan-btn{
-    position: absolute;
-    top: 100px;
-    right: 600px;
-    background-color: #3e3f5e;
-    color: white;
-    padding: 10px 20px;
-    border: none;
-    border-radius: 5px;
-    cursor: pointer;
-    font-size: 16px;
-    z-index: 1000;
-    transition: 0.3s ease;
-  }
+.scan-btn {
+  position: absolute;
+  top: 100px;
+  right: 700px;
+  background-color: #3e3f5e;
+  color: white;
+  padding: 15px 40px;   /* bigger horizontal + vertical space */
+  border: none;
+  border-radius: 8px;   /* slightly rounder */
+  cursor: pointer;
+  font-size: 20px;      /* larger text */
+  font-weight: 600;     /* bolder for readability */
+  z-index: 1000;
+  transition: transform 0.2s ease, background-color 0.3s ease;
+}
+
+.scan-btn:hover {
+  background-color: #2d2e47;
+  transform: scale(1.05); /* subtle hover zoom */
+}
+
   
   .scan-btn:hover {
     background-color: #575a82;
@@ -291,53 +299,56 @@ button:hover {
     font-size: 16px;
     color: #333;
   }
-  
   .button-container {
-    display: flex;
-    justify-content: center;
-    gap: 15px;
-    margin-top: 15px;
-  }
-  
-  .dispense-btn {
-    padding: 12px 20px;
-    font-size: 16px;
-    font-weight: bold;
-    border-radius: 8px;
-    cursor: pointer;
-    transition: background 0.3s ease-in-out;
-  }
-  
-  .water-btn {
-    background-color: #4CAF50;
-    color: white;
-    border: none;
-  }
-  
-  .water-btn:hover {
-    background-color: #388E3C;
-  }
-  
-  .grain-btn {
-    background-color: #FF9800;
-    color: white;
-    border: none;
-  }
-  
-  .grain-btn:hover {
-    background-color: #F57C00;
-  }
-  
-  .payment-btn {
-    background-color: #2196F3;
-    color: white;
-    border: none;
-  }
-  
-  .payment-btn:hover {
-    background-color: #1976D2;
-  }
-  
+  display: flex;
+  justify-content: center;
+  gap: 20px;          /* slightly bigger gap between buttons */
+  margin-top: 20px;
+}
+
+.dispense-btn {
+  padding: 18px 32px; /* bigger button size */
+  font-size: 20px;    /* bigger text */
+  font-weight: bold;
+  border-radius: 12px; /* more rounded corners */
+  cursor: pointer;
+  transition: background 0.3s ease-in-out, transform 0.2s ease-in-out;
+}
+
+.dispense-btn:hover {
+  transform: scale(1.05); /* subtle hover zoom */
+}
+
+.water-btn {
+  background-color: #4CAF50;
+  color: white;
+  border: none;
+}
+
+.water-btn:hover {
+  background-color: #388E3C;
+}
+
+.grain-btn {
+  background-color: #FF9800;
+  color: white;
+  border: none;
+}
+
+.grain-btn:hover {
+  background-color: #F57C00;
+}
+
+.payment-btn {
+  background-color: #2196F3;
+  color: white;
+  border: none;
+}
+
+.payment-btn:hover {
+  background-color: #1976D2;
+}
+
   .bold-text {
     font-weight: bold;
     font-size: 22px;

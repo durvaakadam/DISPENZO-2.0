@@ -84,10 +84,12 @@ parser.on("data", async (data) => {
       io.emit("weightUpdate", latestWeight);
 
       if (latestWeight >= weightThreshold && !motorStopped) {
-        console.log(`🛑 Threshold (${weightThreshold} g) reached. Stopping motor...`);
-        esp32.write("STOP\n"); // ESP32 handles stopping motor
-        motorStopped = true;
-      }
+  console.log(`🛑 Threshold (${weightThreshold} g) reached. Stopping motor...`);
+  esp32.write("STOP\n");   // stop weight logic
+  esp32.write("RIGHT\n");  // move arm RIGHT
+  motorStopped = true;
+}
+
     }
     return;
   }
@@ -103,6 +105,8 @@ parser.on("data", async (data) => {
   console.log("🔎 ESP32:", message);
 });
 
+
+
 // ------------------- Socket.IO -------------------
 io.on("connection", (socket) => {
   console.log("⚡ New client connected");
@@ -116,11 +120,26 @@ io.on("connection", (socket) => {
   });
 
   // Dispense grains
-  socket.on("dispenseGrains", () => {
-    console.log("🌾 Sending DISPENSE_GRAINS command...");
-    esp32.write("START\n");
-    socket.emit("dispenseGrainResponse", { success: true, message: "Grains dispensing started!" });
+ socket.on("dispenseGrains", () => {
+  console.log("🌾 Dispense grains requested...");
+
+  // 1️⃣ Start weighing process
+  esp32.write("START\n");
+
+  // 2️⃣ Immediately move servo LEFT
+  esp32.write("LEFT\n");
+
+  socket.emit("dispenseGrainResponse", {
+    success: true,
+    message: "Grains dispensing started and arm moved LEFT!"
   });
+});
+
+socket.on("sendNotification", () => {
+  console.log("📨 Sending notification command to ESP32...");
+  esp32.write("SEND\n");  // ESP32 will handle sending Blynk notification
+  socket.emit("notificationResponse", { success: true, message: "Notification sent!" });
+});
 
   // Scan card
   socket.on("scancard", () => {
@@ -129,16 +148,6 @@ io.on("connection", (socket) => {
     socket.emit("scancardResponse", { success: true, message: "Scanning started!" });
   });
 
-  // Servo control
-  socket.on("servoLeft", () => {
-    console.log("⬅️ Moving servo LEFT");
-    esp32.write("LEFT\n");
-  });
-
-  socket.on("servoRight", () => {
-    console.log("➡️ Moving servo RIGHT");
-    esp32.write("RIGHT\n");
-  });
 
   // Update threshold
   socket.on("updateWeightThreshold", async (newThreshold) => {
