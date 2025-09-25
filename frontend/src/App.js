@@ -6,7 +6,7 @@ import { collection, getDocs } from "firebase/firestore";
 
 import "./Rfid.css";
 
-const razorpayApiKey = "";
+const razorpayApiKey = "rzp_test_22YpxagEoYtImx";
 const socket = io("http://localhost:5000");
 
 function Rfid() {
@@ -29,17 +29,27 @@ function Rfid() {
   }, []);
 
   useEffect(() => {
-    socket.on("rfidData", (uid) => {
-      if (uid) {
-        setScanning(false);
-        setRfidUID(uid);
-        setAuthSuccess(false);
-        setEnteredPassword("");
-        setError("");
-        setUserData(null);
-        setDispenseMessage("");
-      }
-    });
+  console.log("🔌 Connecting to Socket.IO server...");
+  socket.on("connect", () => {
+    console.log("✅ Socket connected with ID:", socket.id);
+  });
+
+  socket.on("disconnect", () => {
+    console.log("❌ Socket disconnected");
+  });
+
+  socket.on("rfidData", (uid) => {
+    console.log("📡 Received UID from server:", uid);
+    if (uid) {
+      setScanning(false);
+      setRfidUID(uid);
+      setAuthSuccess(false);
+      setEnteredPassword("");
+      setError("");
+      setUserData(null);
+      setDispenseMessage("");
+    }
+  });
 
     return () => {
       socket.off("rfidData");
