@@ -8,7 +8,6 @@ import "./Rfid.css";
 
 const razorpayApiKey = "";
 const socket = io("http://localhost:5000");
-
 function Rfid() {
   const [rfidUID, setRfidUID] = useState("");
   const [enteredPassword, setEnteredPassword] = useState("");
