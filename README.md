@@ -16,7 +16,7 @@ The Smart Ration Distribution System (SRDS) modernizes the Public Distribution S
 
 ## 📌 Circuit Diagram
 
-<img src="/images/circuit_diag.jpeg" alt="CIRCUIT DIAGRAM" width="600"/>
+<img src="/images/circuit_diag.png" alt="CIRCUIT DIAGRAM" width="600"/>
 
 
 ## 📸 PROJECT MODEL
