@@ -91,3 +91,7 @@ Use the app to monitor and control remotely.
 📥 Serial data received: ⏹️ Weight STOPPED
 🔎 ESP32: ⬅️ Servo moved RIGHT (0°)
 ```
+
+## 📜 License
+
+This project is licensed under the MIT License – see the [LICENSE](LICENSE) file for details.
