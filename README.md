@@ -14,11 +14,16 @@ The Smart Ration Distribution System (SRDS) modernizes the Public Distribution S
 ✅ Weight Tracking Card (live updates during dispensing)  
 ✅ Alert banners (⚠️ high temp / low inventory)  
 
+## 📌 Circuit Diagram
+
+<img src="/images/circuit_diag.jpeg" alt="CIRCUIT DIAGRAM" width="600"/>
+
+
 ## 📸 PROJECT MODEL
 
 <div style="display: flex; gap: 10px;">
   <img src="/images/new1.jpeg" alt="SETUP" width="300"/>
-  <img src="/images/new2.jpeg" alt="SETUP" width="300"/>
+  <img src="/images/new4.jpeg" alt="SETUP" width="300"/>
 </div>
 
 
