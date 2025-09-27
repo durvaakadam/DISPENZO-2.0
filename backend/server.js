@@ -103,7 +103,7 @@ parser.on("data", async (data) => {
       if (latestWeight >= weightThreshold && !motorStopped) {
   console.log(`🛑 Threshold (${weightThreshold} g) reached. Stopping motor...`);
   esp32.write("STOP\n");   // stop weight logic
-  esp32.write("LEFT\n");  // move arm RIGHT
+  esp32.write("RIGHT\n");  // move arm RIGHT
   motorStopped = true;
 }
 
@@ -144,7 +144,7 @@ io.on("connection", (socket) => {
   esp32.write("START\n");
 
   // 2️⃣ Immediately move servo LEFT
-  esp32.write("RIGHT\n");
+  esp32.write("LEFT\n");
 
   socket.emit("dispenseGrainResponse", {
     success: true,
