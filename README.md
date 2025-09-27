@@ -18,7 +18,7 @@ The Smart Ration Distribution System (SRDS) modernizes the Public Distribution S
 
 <div style="display: flex; gap: 10px;">
   <img src="/images/new1.jpeg" alt="SETUP" width="300"/>
-  <img src="./new2.png" alt="SETUP" width="300"/>
+  <img src="/images/new2.jpeg" alt="SETUP" width="300"/>
 </div>
 
 
