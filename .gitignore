@@ -34,3 +34,4 @@ backend/.env.*
 .vscode/
 Thumbs.db
 
+thinkspeak/dispenzo2service.json 
