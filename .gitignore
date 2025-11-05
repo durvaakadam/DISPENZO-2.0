@@ -22,3 +22,15 @@ npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
 backend/serviceAccountKey.json
+thinkspeak/dispenzo2service.json
+# Firebase service account keys (avoid committing any admin SDK JSON files)
+backend/*firebase-adminsdk-*.json
+
+# Local backend env and sensitive files
+backend/.env
+backend/.env.*
+
+# IDE and OS files
+.vscode/
+Thumbs.db
+
