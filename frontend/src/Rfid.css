@@ -442,3 +442,25 @@ button:hover {
     flex-direction: column;
   }
 }
+
+/* Analytics Button */
+.analytics-btn {
+  background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: bold;
+  transition: all 0.3s ease;
+  margin: 10px;
+}
+
+.analytics-btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 15px rgba(102, 126, 234, 0.4);
+}
+
+.back-btn:hover {
+  background-color: #0056b3 !important;
+}

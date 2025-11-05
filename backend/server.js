@@ -6,7 +6,7 @@ const cors = require("cors");
 const socketIo = require("socket.io");
 const admin = require("firebase-admin");
 const serviceAccount = require("./serviceAccountKey.json");
-
+const rtdb = require("./firebaseRTDB");
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, { cors: { origin: "*" } });
@@ -14,9 +14,7 @@ const io = socketIo(server, { cors: { origin: "*" } });
 app.use(cors());
 
 // ✅ Firebase init
-admin.initializeApp({
-  credential: admin.credential.cert(serviceAccount),
-});
+
 const db = admin.firestore();
 
 // ✅ ESP32 Serial Setup
@@ -112,11 +110,37 @@ parser.on("data", async (data) => {
   }
 
   // ------------------- Temperature -------------------
+  
+
   if (message.startsWith("Temperature:")) {
-    console.log("🌡️ " + message);
-    io.emit("temperatureUpdate", message);
-    return;
+  try {
+    const match = message.match(/Temperature:\s*([\d.]+)/);
+    if (!match) return;
+
+    const temperature = parseFloat(match[1]);
+
+    // Log to console
+    console.log("🌡 Temperature:", temperature);
+
+    // Emit to frontend (optional if using Socket.IO)
+    io.emit("temperatureUpdate", temperature);
+
+    // ✅ Store under Dispenzo_Transactions/Live_Sensors/Temperature
+    const tempRef = rtdb.ref("Dispenzo_Transactions/Live_Sensors/Temperature");
+    await tempRef.set({
+      value: temperature,
+      timestamp: Date.now(),
+    });
+
+    console.log("✅ Saved to Realtime DB at Dispenzo_Transactions/Live_Sensors/Temperature");
+
+    // Optional ThingSpeak push
+    // const THINGSPEAK_KEY = "YOUR_WRITE_API_KEY";
+    // await axios.get(`https://api.thingspeak.com/update?api_key=${THINGSPEAK_KEY}&field1=${temperature}`);
+  } catch (err) {
+    console.error("Error saving temperature:", err);
   }
+}
 
   // ------------------- Generic Debug -------------------
   console.log("🔎 ESP32:", message);
