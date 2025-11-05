@@ -13,6 +13,7 @@
 
 # misc
 .DS_Store
+.env
 .env.local
 .env.development.local
 .env.test.local
@@ -27,11 +28,8 @@ thinkspeak/dispenzo2service.json
 backend/*firebase-adminsdk-*.json
 
 # Local backend env and sensitive files
-backend/.env
-backend/.env.*
+
 
 # IDE and OS files
 .vscode/
 Thumbs.db
-
-thinkspeak/dispenzo2service.json 
