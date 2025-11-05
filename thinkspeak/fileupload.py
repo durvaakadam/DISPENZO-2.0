@@ -9,7 +9,7 @@ firebase_admin.initialize_app(cred, {
 })
 
 # --- Step 2: Load CSV File ---
-df = pd.read_csv("Dispenzo_2.0_Sample_Dataset.csv")
+df = pd.read_csv("Dispenzo_2.0_Variation_Dataset.csv")
 
 # --- Step 3: Convert DataFrame to Dict ---
 data = df.to_dict(orient="records")
