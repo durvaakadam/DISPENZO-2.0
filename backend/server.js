@@ -7,6 +7,11 @@ const socketIo = require("socket.io");
 const admin = require("firebase-admin");
 const serviceAccount = require("./serviceAccountKey.json");
 const rtdb = require("./firebaseRTDB");
+
+// ✅ Disable Firebase logging completely
+process.env.FIREBASE_AUTH_EMULATOR_HOST = undefined;
+process.env.GOOGLE_APPLICATION_CREDENTIALS = undefined;
+
 const app = express();
 const server = http.createServer(app);
 const io = socketIo(server, { cors: { origin: "*" } });
@@ -17,21 +22,87 @@ app.use(cors());
 
 const db = admin.firestore();
 
+// ------------------- Comprehensive Firebase Error Suppression -------------------
+let firebaseErrorShown = false;
+
+// Override console methods
+const originalConsoleError = console.error;
+const originalConsoleWarn = console.warn;
+const originalConsoleLog = console.log;
+
+// Suppress console.error
+console.error = (...args) => {
+  const message = args.join(' ');
+  if ((message.includes('FIREBASE WARNING') || message.includes('@firebase/database')) && message.includes('invalid_grant')) {
+    if (!firebaseErrorShown) {
+      originalConsoleError('🔥 FIREBASE: Invalid credentials detected (suppressing further warnings)');
+      firebaseErrorShown = true;
+    }
+    return;
+  }
+  originalConsoleError(...args);
+};
+
+// Suppress console.warn
+console.warn = (...args) => {
+  const message = args.join(' ');
+  if ((message.includes('FIREBASE WARNING') || message.includes('@firebase/database')) && message.includes('invalid_grant')) {
+    return; // Suppress
+  }
+  originalConsoleWarn(...args);
+};
+
+// Suppress console.log for Firebase warnings
+console.log = (...args) => {
+  const message = args.join(' ');
+  if ((message.includes('FIREBASE WARNING') || message.includes('@firebase/database')) && message.includes('invalid_grant')) {
+    return; // Suppress
+  }
+  originalConsoleLog(...args);
+};
+
+// Catch unhandled warnings at process level
+process.on('warning', (warning) => {
+  if (warning.message && warning.message.includes('FIREBASE') && warning.message.includes('invalid_grant')) {
+    return; // Suppress Firebase warnings
+  }
+  originalConsoleWarn('Process Warning:', warning.message);
+});
+
+// Override process.stderr.write to catch direct stderr writes
+const originalStderrWrite = process.stderr.write;
+process.stderr.write = function(chunk, encoding, callback) {
+  const message = chunk.toString();
+  if ((message.includes('FIREBASE WARNING') || message.includes('@firebase/database')) && message.includes('invalid_grant')) {
+    if (!firebaseErrorShown) {
+      originalStderrWrite.call(this, '🔥 FIREBASE: Credential error detected (further warnings suppressed)\n');
+      firebaseErrorShown = true;
+    }
+    if (callback) callback();
+    return true;
+  }
+  return originalStderrWrite.call(this, chunk, encoding, callback);
+};
+
 // ✅ ESP32 Serial Setup
-const esp32 = new SerialPort({ path: "COM6", baudRate: 115200 });
+const esp32 = new SerialPort({ path: "COM5", baudRate: 115200 });
 const parser = esp32.pipe(new ReadlineParser({ delimiter: "\n" }));
 
-esp32.on("open", () => console.log("✅ Serial Port Opened on COM6"));
+esp32.on("open", () => console.log("✅ Serial Port Opened on COM5"));
 esp32.on("error", (err) => console.error("❌ Serial Port Error:", err.message));
 
 // ------------------- STATE -------------------
 let latestWeight = 0;
-let weightThreshold = 50;
+let weightThreshold = 7; // Reduced from 50g to 15g for testing
 let motorStopped = false;
 let lastScannedUID = null;
 let scannedUIDs = new Set();
 let lastScanTime = 0;
 const SCAN_DEBOUNCE_TIME = 500;
+
+// Ultrasonic sensor state
+let latestDistance = null;
+let latestStockStatus = null;
 
 // ------------------- Firestore -------------------
 async function fetchWeightThreshold(uid) {
@@ -53,20 +124,72 @@ parser.on("data", async (data) => {
   // ULTRASONIC 
 
   // ------------------- Ultrasonic / Grain Level -------------------
-// if (message.startsWith("Distance from sensor:")) {
-//   io.emit("ultraData", message);  // send distance line to frontend
-//   return;
-// }
+  // More flexible distance parsing
+  if (message.includes("Distance:") || message.includes("Distance from sensor:")) {
+    // Extract distance value with multiple patterns
+    const distanceMatch = message.match(/Distance.*?(\d+\.?\d*)\s*cm/i);
+    if (distanceMatch) {
+      const distance = parseFloat(distanceMatch[1]);
+      latestDistance = distance; // Store latest distance
+      console.log(`📏 Distance detected: ${distance} cm`);
+      io.emit("ultrasonicUpdate", { 
+        type: "distance", 
+        value: distance, 
+        unit: "cm",
+        raw: message 
+      });
+      console.log(`📤 Emitted distance update: ${distance} cm`);
+    } else {
+      console.log(`⚠️ Distance message found but couldn't parse: "${message}"`);
+    }
+    return;
+  }
 
-// if (message.startsWith("Fill level:")) {
-//   io.emit("ultraData", message);  // send fill level line to frontend
-//   return;
-// }
+  if (message.includes("Fill level:")) {
+    console.log(`📊 Fill level detected: ${message}`);
+    io.emit("ultrasonicUpdate", { 
+      type: "fillLevel", 
+      raw: message 
+    });
+    return;
+  }
 
-// if (message.includes("⚠️ Low Stock Detected!")) {
-//   io.emit("lowStockAlert", message); // low stock alert
-//   return;
-// }
+  // More flexible stock level parsing
+  if (message.includes("Stock Level:")) {
+    const status = message.split(":")[1].trim();
+    latestStockStatus = status; // Store latest stock status
+    console.log(`📦 Stock level detected: ${status}`);
+    io.emit("ultrasonicUpdate", { 
+      type: "stockLevel", 
+      status: status,
+      raw: message 
+    });
+    console.log(`📤 Emitted stock level update: ${status}`);
+    return;
+  }
+
+  if (message.includes("⚠️ Low Stock Detected!") || message.includes("Low Stock Detected")) {
+    latestStockStatus = "⚠️ Low Stock Detected!"; // Override status with warning
+    console.log(`🚨 Low stock alert detected!`);
+    io.emit("ultrasonicUpdate", { 
+      type: "stockLevel", 
+      status: "⚠️ Low Stock Detected!",
+      raw: message 
+    });
+    io.emit("lowStockAlert", message);
+    console.log(`📤 Emitted low stock alert`);
+    return;
+  }
+
+  if (message.includes("Ultrasonic Monitoring STARTED")) {
+    io.emit("ultrasonicUpdate", { 
+      type: "status", 
+      message: "Monitoring Started",
+      raw: message 
+    });
+    console.log("📡 Ultrasonic monitoring started");
+    return;
+  }
 
   // ------------------- RFID -------------------
   // Match any UID format, including Default UID
@@ -98,13 +221,20 @@ parser.on("data", async (data) => {
       console.log(`⚖️ Current weight: ${latestWeight} g`);
       io.emit("weightUpdate", latestWeight);
 
+      // Debug logging
+      console.log(`🔍 Debug: Weight=${latestWeight}g, Threshold=${weightThreshold}g, MotorStopped=${motorStopped}`);
+      
       if (latestWeight >= weightThreshold && !motorStopped) {
-  console.log(`🛑 Threshold (${weightThreshold} g) reached. Stopping motor...`);
-  esp32.write("STOP\n");   // stop weight logic
-  esp32.write("RIGHT\n");  // move arm RIGHT
-  motorStopped = true;
-}
-
+        console.log(`🛑 Threshold (${weightThreshold} g) reached. Stopping motor...`);
+        esp32.write("STOP\n");   // stop weight logic
+        esp32.write("RIGHT\n");  // move arm RIGHT
+        motorStopped = true;
+        console.log(`✅ Commands sent: STOP and RIGHT`);
+      } else if (latestWeight >= weightThreshold && motorStopped) {
+        console.log(`⚠️ Weight threshold reached but motor already stopped`);
+      } else {
+        console.log(`📊 Weight below threshold (${latestWeight}g < ${weightThreshold}g)`);
+      }
     }
     return;
   }
@@ -125,25 +255,43 @@ parser.on("data", async (data) => {
     // Emit to frontend (optional if using Socket.IO)
     io.emit("temperatureUpdate", temperature);
 
-    // ✅ Store under Dispenzo_Transactions/Live_Sensors/Temperature
-    const tempRef = rtdb.ref("Dispenzo_Transactions/Live_Sensors/Temperature");
-    await tempRef.set({
-      value: temperature,
-      timestamp: Date.now(),
-    });
+    // ✅ Store under Dispenzo_Transactions/Live_Sensors/Temperature (with error suppression)
+    try {
+      const tempRef = rtdb.ref("Dispenzo_Transactions/Live_Sensors/Temperature");
+      await tempRef.set({
+        value: temperature,
+        timestamp: Date.now(),
+      });
 
-    console.log("✅ Saved to Realtime DB at Dispenzo_Transactions/Live_Sensors/Temperature");
+      // Only log success once every 10 readings to reduce spam
+      if (Math.random() < 0.1) {
+        console.log("✅ Temperature data saved to Realtime DB");
+      }
+    } catch (dbError) {
+      // Suppress Firebase credential errors, only show once
+      if (!firebaseErrorShown && dbError.message.includes('invalid_grant')) {
+        console.error('🔥 Firebase DB Error: Invalid credentials. Temperature data not saved.');
+        firebaseErrorShown = true;
+      } else if (!dbError.message.includes('invalid_grant')) {
+        console.error("❌ Database error:", dbError.message);
+      }
+    }
 
     // Optional ThingSpeak push
     // const THINGSPEAK_KEY = "YOUR_WRITE_API_KEY";
     // await axios.get(`https://api.thingspeak.com/update?api_key=${THINGSPEAK_KEY}&field1=${temperature}`);
   } catch (err) {
-    console.error("Error saving temperature:", err);
+    console.error("Error processing temperature:", err.message);
   }
 }
 
   // ------------------- Generic Debug -------------------
   console.log("🔎 ESP32:", message);
+  
+  // Log current ultrasonic state every 10 messages
+  if (Math.random() < 0.1) {
+    console.log(`📊 Current ultrasonic state: Distance=${latestDistance}, Stock=${latestStockStatus}`);
+  }
 });
 
 
@@ -152,6 +300,24 @@ parser.on("data", async (data) => {
 io.on("connection", (socket) => {
   console.log("⚡ New client connected");
   socket.emit("helloMessage", "Hello from Node server to UI");
+
+  // Send latest ultrasonic data to new client
+  if (latestDistance !== null) {
+    socket.emit("ultrasonicUpdate", { 
+      type: "distance", 
+      value: latestDistance, 
+      unit: "cm",
+      raw: `Distance: ${latestDistance} cm` 
+    });
+  }
+  
+  if (latestStockStatus !== null) {
+    socket.emit("ultrasonicUpdate", { 
+      type: "stockLevel", 
+      status: latestStockStatus,
+      raw: `Stock Level: ${latestStockStatus}` 
+    });
+  }
 
   // Dispense water
   socket.on("dispenseWater", () => {
@@ -180,6 +346,12 @@ socket.on("sendNotification", () => {
   console.log("📨 Sending notification command to ESP32...");
   esp32.write("SEND\n");  // ESP32 will handle sending Blynk notification
   socket.emit("notificationResponse", { success: true, message: "Notification sent!" });
+});
+
+socket.on("sendAlert", () => {
+  console.log("🚨 Sending alert command to ESP32...");
+  esp32.write("ALERT\n");  // ESP32 will handle alert functionality
+  socket.emit("alertResponse", { success: true, message: "Alert sent!" });
 });
 
 socket.on("stopTemperature", () => {

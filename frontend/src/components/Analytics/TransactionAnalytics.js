@@ -101,13 +101,7 @@ const TransactionAnalytics = ({ data, timeRange }) => {
           }} />
         </div>
 
-        <div className="chart-container">
-          <h3>Authentication Methods</h3>
-          <Pie data={getAuthMethodData()} options={{
-            responsive: true,
-            plugins: { legend: { position: 'right' } }
-          }} />
-        </div>
+        
 
         <div className="chart-container">
           <h3>Error Analysis</h3>

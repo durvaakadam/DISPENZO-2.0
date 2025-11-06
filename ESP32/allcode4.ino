@@ -208,6 +208,11 @@ void loop() {
     else if (command.equalsIgnoreCase("TEMP")) { tempActive = true; Serial.println("🌡️ Temperature Reading STARTED"); }
     else if (command.equalsIgnoreCase("TSTOP")) { tempActive = false; Serial.println("🌡️ Temperature Reading STOPPED"); }
     else if (command.equalsIgnoreCase("SEND")) { sendNotification = true; Serial.println("📨 Sending notification..."); Blynk.logEvent("notification", "WELCOME TO DISPENZO!"); }
+
+else if (command.equalsIgnoreCase("ALERT")) { 
+  Serial.println("🚨 Sending notification...");
+  Blynk.logEvent("alert_event", "⚠️ Stock Low! Please Refill.");
+}
     else if (command.equalsIgnoreCase("STOPSEND")) { sendNotification = false; Serial.println("📨 Notifications DISABLED"); }
     else if (command.equalsIgnoreCase("T")) { scale.tare(); smoothedWeight = 0.0; Serial.println("⚡ Scale Tared via Serial!"); }
     else if (command.equalsIgnoreCase("RIGHT")) { armServo.write(0); Serial.println("⬅️ Servo moved RIGHT (0°)"); }
@@ -284,8 +289,9 @@ void loop() {
     delay(500); // read every 0.5 sec
   }
 
- if (ultraActive) {
-  // Trigger ultrasonic
+ // ---- Ultrasonic Reading ----
+if (ultraActive) {
+  // Trigger the ultrasonic sensor
   digitalWrite(TRIG_PIN, LOW);
   delayMicroseconds(2);
   digitalWrite(TRIG_PIN, HIGH);
@@ -294,25 +300,28 @@ void loop() {
 
   // Measure echo
   duration = pulseIn(ECHO_PIN, HIGH);
+
+  // Convert duration to distance in cm
   distance = duration * 0.034 / 2;
 
-  // Calculate fill level
+  // Calculate fill level (optional)
   float fillLevel = containerHeight - distance;
   if (fillLevel < 0) fillLevel = 0;
   float percentage = (fillLevel / containerHeight) * 100;
 
-  // Print once
-  Serial.print("Fill level: ");
-  Serial.print(fillLevel);
-  Serial.print(" cm (");
-  Serial.print(percentage);
-  Serial.println("%)");
+  // --- Serial output ---
+  Serial.print("Distance: ");
+  Serial.print(distance, 2);
+  Serial.println(" cm");
+  Serial.println("⚠️ Low Stock Detected!");
 
-  // Send to Blynk if needed
+  // --- Always send notification to Blynk ---
+  Blynk.logEvent("low_stock_alert", "⚠️ Low Stock Detected!");
+
+  // --- Optional: send to dashboard if needed ---
   Blynk.virtualWrite(V5, percentage);
 
-  // Reset so it doesn’t repeat
-  ultraActive = false;
+  delay(2000); // 2-sec interval
 }
 
 }

@@ -114,7 +114,7 @@ const Analytics = () => {
   return (
     <div className="analytics-container">
       <div className="analytics-header">
-        <h1>📊 DISPENZO 2.0 Analytics</h1>
+        <h1>DISPENZO 2.0 Analytics</h1>
         
         <div className="controls">
           <div className="view-selector">
@@ -122,31 +122,31 @@ const Analytics = () => {
               className={selectedView === 'overview' ? 'active' : ''}
               onClick={() => setSelectedView('overview')}
             >
-              📈 Overview
+              Overview
             </button>
             <button 
               className={selectedView === 'transactions' ? 'active' : ''}
               onClick={() => setSelectedView('transactions')}
             >
-              💳 Transactions
+              Transactions
             </button>
             <button 
               className={selectedView === 'inventory' ? 'active' : ''}
               onClick={() => setSelectedView('inventory')}
             >
-              📦 Inventory
+              Inventory
             </button>
             <button 
               className={selectedView === 'performance' ? 'active' : ''}
               onClick={() => setSelectedView('performance')}
             >
-              ⚡ Performance
+              Performance
             </button>
             <button 
               className={selectedView === 'environmental' ? 'active' : ''}
               onClick={() => setSelectedView('environmental')}
             >
-              🌡️ Environment
+              Environment
             </button>
           </div>
         </div>

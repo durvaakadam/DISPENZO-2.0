@@ -103,19 +103,7 @@ const InventoryDashboard = ({ data, timeRange }) => {
 
   return (
     <div className="inventory-dashboard">
-      {lowStockAlerts.length > 0 && (
-        <div className="alerts-section">
-          <h3>⚠️ Low Stock Alerts</h3>
-          <div className="alert-cards">
-            {lowStockAlerts.map(([item, stock]) => (
-              <div key={item} className="alert-card low-stock">
-                <span className="item-name">{item}</span>
-                <span className="stock-level">{stock.toFixed(1)} kg remaining</span>
-              </div>
-            ))}
-          </div>
-        </div>
-      )}
+      
 
       <div className="charts-grid">
         <div className="chart-container full-width">

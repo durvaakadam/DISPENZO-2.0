@@ -414,15 +414,17 @@ button:hover {
 }
 
 .monitor-card h3 {
-  margin-bottom: 10px;
-  font-size: 18px;
+  margin-bottom: 15px;    /* Increased from 10px */
+  font-size: 22px;        /* Increased from 18px */
   color: #f0f0f0;
+  font-weight: bold;
 }
 
 .monitor-card p {
-  font-size: 16px;
-  font-weight: 500;
+  font-size: 18px;      /* Reduced from 24px to 18px */
+  font-weight: 600;     /* Bolder text */
   color: #fff;
+  margin: 8px 0;        /* More spacing */
 }
 
 .monitor-card.alert {
@@ -463,4 +465,119 @@ button:hover {
 
 .back-btn:hover {
   background-color: #0056b3 !important;
+}
+
+/* Quality Monitoring Buttons */
+.check-btn {
+  background: linear-gradient(135deg, #11998e 0%, #38ef7d 100%);
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  margin: 8px 4px;
+  font-size: 13px;
+  min-width: 140px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.check-btn:hover {
+  background: linear-gradient(135deg, #38ef7d 0%, #11998e 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(56, 239, 125, 0.3);
+}
+
+/* Alert Button */
+.alert-btn {
+  background: #2b5171;
+  color: white;
+  border: none;
+  padding: 12px 20px;
+  border-radius: 8px;
+  cursor: pointer;
+  font-weight: 600;
+  transition: all 0.3s ease;
+  margin: 8px 4px;
+  font-size: 13px;
+  min-width: 140px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.2);
+}
+
+.alert-btn:hover {
+  background: linear-gradient(135deg, #ff3838 0%, #ff2f2f 100%);
+  transform: translateY(-2px);
+  box-shadow: 0 6px 12px rgba(255, 71, 87, 0.4);
+}
+
+/* Stock Warning Style */
+.stock-warning {
+  color: #ff4757 !important;
+  font-weight: bold !important;
+  animation: pulse 1.5s infinite;
+  text-shadow: 0 0 5px rgba(255, 71, 87, 0.3);
+}
+
+@keyframes pulse {
+  0% { opacity: 1; }
+  50% { opacity: 0.7; }
+  100% { opacity: 1; }
+}
+
+/* Single Line Sensor Display */
+.sensor-info {
+  background: rgba(255, 255, 255, 0.1);
+  border-radius: 6px;
+  padding: 10px;
+  margin: 10px 0;
+  border-left: 3px solid #00bcd4;
+}
+
+.sensor-info p {
+  margin: 0;
+  font-size: 14px;
+  color: white;
+  font-weight: 500;
+}
+
+/* Big, Bold Sensor Data Styles */
+.sensor-data {
+  font-size: 28px !important;
+  font-weight: 700 !important;
+  text-shadow: 0 2px 4px rgba(0, 0, 0, 0.3);
+  margin: 12px 0 !important;
+  padding: 8px 12px;
+  background: rgba(255, 255, 255, 0.05);
+  border-radius: 8px;
+  border-left: 4px solid #00bcd4;
+}
+
+.temperature-data {
+  color: #ff9800 !important;
+  border-left-color: #ff9800 !important;
+}
+
+.distance-data {
+  color: #2196f3 !important; 
+  border-left-color: #2196f3 !important;
+}
+
+.stock-data {
+  color: #4caf50 !important;
+  border-left-color: #4caf50 !important;
+}
+
+.status-ok {
+  color: #4caf50;
+  font-weight: bold;
+}
+
+.status-warning {
+  color: #ff9800;
+  font-weight: bold;
 }

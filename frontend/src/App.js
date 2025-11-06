@@ -30,6 +30,8 @@ function Rfid() {
   const [adminView, setAdminView] = useState("users"); // "users" or "monitoring"
   const [containerLevel, setContainerLevel] = useState(null);
   const [levelAlert, setLevelAlert] = useState(false);
+  const [ultrasonicDistance, setUltrasonicDistance] = useState(null);
+  const [stockStatus, setStockStatus] = useState(null);
   const lowStockThreshold = 20; // % fill below which alert triggers
 
   useEffect(() => {
@@ -57,12 +59,24 @@ function Rfid() {
     socket.on("ultrasonicUpdate", (data) => {
       console.log("📡 Ultrasonic data received:", data);
       setFillData(data);
+      
+      // Store specific data types for single line display
+      if (data.type === "distance") {
+        console.log(`📏 Setting distance: ${data.value}`);
+        setUltrasonicDistance(data.value);
+      } else if (data.type === "stockLevel") {
+        console.log(`📦 Setting stock status: ${data.status}`);
+        setStockStatus(data.status);
+      }
+      
+      // Debug current state
+      console.log(`📊 Current state - Distance: ${ultrasonicDistance}, Stock: ${stockStatus}`);
     });
 
     return () => {
       socket.off("ultrasonicUpdate");
     };
-  }, []);
+  }, [ultrasonicDistance, stockStatus]);
 
   useEffect(() => {
     socket.on("temperatureUpdate", (temp) => {
@@ -429,13 +443,27 @@ function Rfid() {
 
 
                     <div className={`monitor-card ${levelAlert ? "alert" : ""}`}>
-                      <h3>Container Level</h3>
-                      <p>{containerLevel !== null ? `${containerLevel}%` : "—"}</p>
+                      <h3>📦 Container Level</h3>
+                      <p>{containerLevel !== null ? `${containerLevel}%` : ""}</p>
                       {levelAlert && <p className="alert-text">⚠️ Low Inventory!</p>}
+                      
+                      {/* Simple Display like Temperature */}
+                      <p>📡 Distance: {ultrasonicDistance !== null ? `${ultrasonicDistance} cm` : "—"}</p>
+                      <p className={stockStatus && stockStatus.includes("Low Stock") ? "stock-warning" : ""}>
+                        {stockStatus !== null ? stockStatus : "—"}
+                      </p>
+                      
                       <button onClick={handleCheckLevel} className="check-btn">
                         Check Level
                       </button>
-
+                      <button
+                        className="alert-btn"
+                        onClick={() => {
+                          socket.emit("sendAlert");
+                        }}
+                      >
+                        🚨 Send Alert
+                      </button>
                     </div>
 
                   </div>
