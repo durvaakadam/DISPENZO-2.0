@@ -58,8 +58,8 @@ bool ultraActive = false;
 bool sendNotification = false; // Control sending notification
 
 // ---------------- Blynk -----------------
-char ssid[] = "Riya's A35";      
-char pass[] = "sheisgood";  
+char ssid[] = "Durva's A35";      
+char pass[] = "12345678";  
 
 // Timer for non-blocking weight reading
 unsigned long lastWeightPrint = 0;
@@ -304,7 +304,7 @@ if (ultraActive) {
   // Convert duration to distance in cm
   distance = duration * 0.034 / 2;
 
-  // Calculate fill level (optional)
+  // Calculate fill level
   float fillLevel = containerHeight - distance;
   if (fillLevel < 0) fillLevel = 0;
   float percentage = (fillLevel / containerHeight) * 100;
@@ -313,15 +313,25 @@ if (ultraActive) {
   Serial.print("Distance: ");
   Serial.print(distance, 2);
   Serial.println(" cm");
-  Serial.println("⚠️ Low Stock Detected!");
 
-  // --- Always send notification to Blynk ---
-  Blynk.logEvent("low_stock_alert", "⚠️ Low Stock Detected!");
+  // --- Low stock alert only once ---
+  static bool lowStockNotified = false;
 
-  // --- Optional: send to dashboard if needed 
+  if (distance > lowStockThreshold && !lowStockNotified) {
+    Serial.println("⚠️ Low Stock Detected!");
+    Blynk.logEvent("low_stock_alert", "⚠️ Low Stock Detected!");
+    lowStockNotified = true;  // mark as notified
+  } 
+  else if (distance <= lowStockThreshold) {
+    // Reset the flag when stock refilled
+    lowStockNotified = false;
+  }
+
+  // --- Optional: update dashboard ---
   Blynk.virtualWrite(V5, percentage);
 
   delay(2000); // 2-sec interval
 }
+
 
 }
