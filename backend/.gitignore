@@ -23,4 +23,4 @@ yarn-debug.log*
 yarn-error.log*
 /backend/serviceAccountKey.json
 /backend/serviceAccountRTDB.json
-/backend/firebaseRTDB.js
+/backend/firebaseRTDB.jsserviceAccountRTDB.json 
