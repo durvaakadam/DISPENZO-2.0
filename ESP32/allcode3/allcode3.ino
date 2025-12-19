@@ -205,6 +205,8 @@ void loop() {
       lcd.setCursor(0,1);
       lcd.print("UID:          "); 
     }
+
+    
     else if (command.equalsIgnoreCase("TEMP")) { tempActive = true; Serial.println("🌡️ Temperature Reading STARTED"); }
     else if (command.equalsIgnoreCase("TSTOP")) { tempActive = false; Serial.println("🌡️ Temperature Reading STOPPED"); }
     else if (command.equalsIgnoreCase("SEND")) { sendNotification = true; Serial.println("📨 Sending notification..."); Blynk.logEvent("notification", "WELCOME TO DISPENZO!"); }
