@@ -11,6 +11,16 @@ const razorpayApiKey = "";
 const socket = io("http://localhost:5000");
 
 function Rfid() {
+    const [fingerprintLogs, setFingerprintLogs] = useState([]);
+  const [fingerprintStatus, setFingerprintStatus] = useState(null);
+// null | "success" | "fail"
+
+const [fingerprintId, setFingerprintId] = useState(null);
+
+  const [currentView, setCurrentView] = useState("main");
+  const [fingerprintPending, setFingerprintPending] = useState(false);
+
+
   const [rfidUID, setRfidUID] = useState("");
   const [enteredPassword, setEnteredPassword] = useState("");
   const [authSuccess, setAuthSuccess] = useState(false);
@@ -25,7 +35,6 @@ function Rfid() {
   const [temperatureAlert, setTemperatureAlert] = useState(false);
   const [tempActive, setTempActive] = useState(false);
   const [fillData, setFillData] = useState(null);
-  const [currentView, setCurrentView] = useState("main"); // 👈 ADD THIS STATE
 
   const [adminView, setAdminView] = useState("users"); // "users" or "monitoring"
   const [containerLevel, setContainerLevel] = useState(null);
@@ -105,7 +114,6 @@ function Rfid() {
     });
 
     socket.on("rfidData", (uid) => {
-      console.log("📡 Received UID from server:", uid);
       if (uid) {
         setScanning(false);
         setRfidUID(uid);
@@ -114,13 +122,41 @@ function Rfid() {
         setError("");
         setUserData(null);
         setDispenseMessage("");
+        setFingerprintLogs([]); // Reset logs on new scan
       }
     });
+
 
     return () => {
       socket.off("rfidData");
     };
   }, []);
+
+useEffect(() => {
+  socket.on("fingerprintLog", (msg) => {
+    setFingerprintLogs((prev) => [...prev, msg]);
+  });
+  socket.on("fingerprintResult", (data) => {
+    if (data.log) {
+      setFingerprintLogs((prev) => [...prev, data.log]);
+    }
+    if (data.success) {
+      setFingerprintStatus("success");
+      setFingerprintId(data.fingerId);
+      setTimeout(() => {
+        setFingerprintPending(false);
+        setCurrentView("main");
+      }, 2000);
+    } else {
+      setFingerprintStatus("fail");
+     
+    }
+  });
+
+  return () => socket.off("fingerprintResult");
+}, []);
+
+
 
   useEffect(() => {
     if (isAdmin) {
@@ -151,10 +187,20 @@ function Rfid() {
         const user = userSnap.data();
 
         if (enteredPassword.trim() === user.password.trim()) {
-          setAuthSuccess(true);
-          setUserData(user);
-          setError("");
-        } else {
+  setAuthSuccess(true);
+  setUserData(user);
+  setError("");
+
+  // 🔄 reset fingerprint UI state
+  setFingerprintStatus(null);
+  setFingerprintId(null);
+
+  // 👉 move to fingerprint step
+  setFingerprintPending(true);
+  setCurrentView("fingerprint");
+  socket.emit("startFingerprint");
+}
+else {
           setAuthSuccess(false);
           setUserData(null);
           setError("Incorrect Password! Please try again.");
@@ -259,15 +305,18 @@ function Rfid() {
     }
   };
 
-  const renderCurrentView = () => {
-    switch (currentView) {
-      case "analytics":
-        return <Analytics />;
-      case "main":
-      default:
-        return renderMainView();
-    }
-  };
+ const renderCurrentView = () => {
+  switch (currentView) {
+    case "fingerprint":
+      return renderFingerprintView();
+    case "analytics":
+      return <Analytics />;
+    case "main":
+    default:
+      return renderMainView();
+  }
+};
+
 
   const renderMainView = () => (
     <>
@@ -478,6 +527,47 @@ function Rfid() {
       </div>
     </>
   );
+const renderFingerprintView = () => (
+  <div className="fingerprint-container">
+    {/* ICON */}
+    <div className="fingerprint-animation">🖐️</div>
+
+    {/* TITLE */}
+    <h2>Fingerprint Verification</h2>
+
+    {/* Terminal logs from ESP32 */}
+    {fingerprintLogs.length > 0 && (
+      <div className="fingerprint-log-box">
+        {fingerprintLogs.map((log, idx) => (
+          <div key={idx}>{log}</div>
+        ))}
+      </div>
+    )}
+
+    {/* 🔁 CONDITIONAL UI */}
+    {fingerprintStatus === null && (
+      <p className="fingerprint-wait">
+        Waiting for fingerprint match...
+      </p>
+    )}
+
+    {fingerprintStatus === "success" && (
+      <div style={{ color: 'lightgreen', textAlign: 'center' }}>
+        <h3>✅ Fingerprint Matched</h3>
+        <p>Fingerprint ID: <strong>{fingerprintId}</strong></p>
+      </div>
+    )}
+
+    {fingerprintStatus === "fail" && (
+      <div style={{ color: '#ff4d4d', textAlign: 'center' }}>
+        <h3>❌ Fingerprint Not Matched</h3>
+        <p>Please try again</p>
+      </div>
+    )}
+
+  </div>
+);
+
 
   return (
     <>

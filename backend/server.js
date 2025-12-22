@@ -144,6 +144,38 @@ parser.on("data", async (data) => {
     }
     return;
   }
+// ------------------- Fingerprint -------------------
+if (message.includes("Fingerprint matching started")) {
+  io.emit("fingerprintLog", "🔍 Fingerprint matching started");
+  return;
+}
+
+if (message.includes("Fingerprint MATCHED")) {
+  const match = message.match(/ID:\s*(\d+)/);
+  const fingerId = match ? Number(match[1]) : null;
+
+  io.emit("fingerprintResult", {
+    success: true,
+    fingerId,
+    log: `✅ Fingerprint MATCHED → ID: ${fingerId}`
+  });
+
+  return;
+}
+
+if (
+  message.includes("Fingerprint NOT matched") ||
+  message.includes("Fingerprint NOT MATCHED")
+) {
+  io.emit("fingerprintResult", {
+    success: false,
+    fingerId: null,
+    log: "❌ Fingerprint NOT matched"
+  });
+
+  return;
+}
+
 
   if (message.includes("Fill level:")) {
     console.log(`📊 Fill level detected: ${message}`);
@@ -357,6 +389,11 @@ socket.on("sendAlert", () => {
 socket.on("stopTemperature", () => {
   console.log("Stopping temperature reading on ESP...");
   esp32.write("TSTOP\n"); // stop continuous reading on ESP
+});
+
+socket.on("startFingerprint", () => {
+  console.log("🔍 Starting fingerprint scan on ESP32");
+  esp32.write("FP_MATCH\n");
 });
 
 
