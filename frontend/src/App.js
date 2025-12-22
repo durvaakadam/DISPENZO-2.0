@@ -3,7 +3,7 @@ import io from "socket.io-client";
 import { db } from "./firebase";
 import { doc, getDoc } from "firebase/firestore";
 import { collection, getDocs } from "firebase/firestore";
-import Analytics from "./components/Analytics/Analytics"; // 👈 ADD THIS IMPORT
+import Analytics from "./components/Analytics/Analytics"; 
 
 import "./Rfid.css";
 
