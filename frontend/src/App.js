@@ -11,6 +11,9 @@ const razorpayApiKey = "";
 const socket = io("http://localhost:5000");
 
 function Rfid() {
+  const [showProceed, setShowProceed] = useState(false);
+const [fingerprintError, setFingerprintError] = useState(false);
+
     const [fingerprintLogs, setFingerprintLogs] = useState([]);
   const [fingerprintStatus, setFingerprintStatus] = useState(null);
 // null | "success" | "fail"
@@ -133,29 +136,24 @@ const [fingerprintId, setFingerprintId] = useState(null);
   }, []);
 
 useEffect(() => {
-  socket.on("fingerprintLog", (msg) => {
-    setFingerprintLogs((prev) => [...prev, msg]);
-  });
   socket.on("fingerprintResult", (data) => {
     if (data.log) {
       setFingerprintLogs((prev) => [...prev, data.log]);
     }
+
     if (data.success) {
       setFingerprintStatus("success");
       setFingerprintId(data.fingerId);
-      setTimeout(() => {
-        setFingerprintPending(false);
-        setCurrentView("main");
-      }, 2000);
+      setShowProceed(true);     // 👈 show proceed button
+      setFingerprintError(false);
     } else {
       setFingerprintStatus("fail");
-     
+      setFingerprintError(true); // 👈 enable retry
     }
   });
 
   return () => socket.off("fingerprintResult");
 }, []);
-
 
 
   useEffect(() => {
@@ -564,6 +562,35 @@ const renderFingerprintView = () => (
         <p>Please try again</p>
       </div>
     )}
+    {/* 🔁 RETRY BUTTON */}
+{fingerprintStatus === "fail" && (
+  <button
+    className="fingerprint-retry-btn"
+    onClick={() => {
+      setFingerprintStatus(null);
+      setFingerprintError(false);
+      setFingerprintLogs([]);
+      socket.emit("startFingerprint"); // 🔁 SAME command as first scan
+    }}
+  >
+    🔄 Retry Fingerprint
+  </button>
+)}
+
+{/* ✅ PROCEED BUTTON */}
+{showProceed && fingerprintStatus === "success" && (
+  <button
+    className="fingerprint-proceed-btn"
+    onClick={() => {
+      setCurrentView("main");
+      setFingerprintPending(false);
+      setShowProceed(false);
+    }}
+  >
+    ➡️ Proceed
+  </button>
+)}
+
 
   </div>
 );
