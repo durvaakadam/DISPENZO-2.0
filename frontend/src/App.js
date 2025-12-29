@@ -7,7 +7,7 @@ import Analytics from "./components/Analytics/Analytics";
 
 import "./Rfid.css";
 
-const razorpayApiKey = "";
+const razorpayApiKey = process.env.REACT_APP_RAZORPAY_API_KEY;
 const socket = io("http://localhost:5000");
 
 function Rfid() {
