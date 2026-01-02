@@ -464,14 +464,17 @@ else {
               {/* Monitoring Section */}
               {/* Monitoring Section */}
               {adminView === "monitoring" && (
-                <div className="monitoring-section">
-                  <h2>🌡️ Temperature & 📦 Inventory Monitoring</h2>
-                  <div className="monitoring-cards">
+                <div className="monitoring-section" style={{ marginTop: '2rem' }}>
+                  <h2 style={{ fontSize: '2rem', fontWeight: 'bold', color: '#fff', marginBottom: '2rem', textShadow: '0 2px 8px rgba(0,0,0,0.12)' }}>🌡️ Temperature & 📦 Inventory Monitoring</h2>
+                  <div className="monitoring-cards" style={{ display: 'flex', gap: '2rem', justifyContent: 'center' }}>
 
-                    <div className={`monitor-card ${temperatureAlert ? "alert" : ""}`}>
-                      <h3>Temperature</h3>
-                      <p>{temperatureValue !== null ? `${temperatureValue} °C` : "—"}</p>
-                      {temperatureAlert && <p className="alert-text">⚠️ High Temperature!</p>}
+                    {/* Temperature Card */}
+                    <div className={`monitor-card ${temperatureAlert ? "alert" : ""}`} style={{ background: 'linear-gradient(135deg, #e0eafc 0%, #cfdef3 100%)', borderRadius: '18px', boxShadow: '0 4px 24px rgba(0,0,0,0.10)', padding: '2rem 2rem', minWidth: '260px', textAlign: 'center', position: 'relative' }}>
+                      <h3 style={{ fontSize: '1.5rem', color: '#007bff', marginBottom: '1rem' }}>Temperature</h3>
+                      <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: temperatureAlert ? '#dc3545' : '#28a745', marginBottom: '0.5rem' }}>
+                        {temperatureValue !== null ? `${temperatureValue} °C` : "—"}
+                      </div>
+                      {temperatureAlert && <p className="alert-text" style={{ color: '#dc3545', fontWeight: 'bold', fontSize: '1.1rem' }}>⚠️ High Temperature!</p>}
                       <button
                         onClick={() => {
                           if (!tempActive) {
@@ -483,28 +486,31 @@ else {
                           }
                         }}
                         className="check-btn"
+                        style={{ marginTop: '1rem', padding: '0.7rem 2rem', fontSize: '1.1rem', borderRadius: '8px', background: tempActive ? '#dc3545' : '#007bff', color: '#fff', border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}
                       >
                         {tempActive ? "Stop Temperature" : "Check Temperature"}
                       </button>
                     </div>
 
-
-                    <div className={`monitor-card ${levelAlert ? "alert" : ""}`}>
-                      <h3>📦 Container Level</h3>
-                      <p>{containerLevel !== null ? `${containerLevel}%` : ""}</p>
-                      {levelAlert && <p className="alert-text">⚠️ Low Inventory!</p>}
-                      
-                      {/* Simple Display like Temperature */}
-                      <p>📡 Distance: {ultrasonicDistance !== null ? `${ultrasonicDistance} cm` : "—"}</p>
-                      <p className={stockStatus && stockStatus.includes("Low Stock") ? "stock-warning" : ""}>
+                    {/* Container Level Card */}
+                    <div className={`monitor-card ${levelAlert ? "alert" : ""}`} style={{ background: 'linear-gradient(135deg, #f6d365 0%, #fda085 100%)', borderRadius: '18px', boxShadow: '0 4px 24px rgba(0,0,0,0.10)', padding: '2rem 2rem', minWidth: '260px', textAlign: 'center', position: 'relative' }}>
+                      <h3 style={{ fontSize: '1.5rem', color: '#fd7e14', marginBottom: '1rem' }}>📦 Container Level</h3>
+                      <div style={{ fontSize: '2.5rem', fontWeight: 'bold', color: levelAlert ? '#dc3545' : '#007bff', marginBottom: '0.5rem' }}>
+                        {containerLevel !== null ? `${containerLevel}%` : "—"}
+                      </div>
+                      {levelAlert && <p className="alert-text" style={{ color: '#dc3545', fontWeight: 'bold', fontSize: '1.1rem' }}>⚠️ Low Inventory!</p>}
+                      <div style={{ fontSize: '1.2rem', color: '#333', margin: '0.5rem 0' }}>
+                        📡 Distance: <span style={{ fontWeight: 'bold', color: '#007bff' }}>{ultrasonicDistance !== null ? `${ultrasonicDistance} cm` : "—"}</span>
+                      </div>
+                      <div style={{ fontSize: '1.2rem', color: stockStatus && stockStatus.includes("Low Stock") ? '#dc3545' : '#28a745', fontWeight: 'bold', margin: '0.5rem 0' }}>
                         {stockStatus !== null ? stockStatus : "—"}
-                      </p>
-                      
-                      <button onClick={handleCheckLevel} className="check-btn">
+                      </div>
+                      <button onClick={handleCheckLevel} className="check-btn" style={{ marginTop: '1rem', padding: '0.7rem 2rem', fontSize: '1.1rem', borderRadius: '8px', background: '#007bff', color: '#fff', border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}>
                         Check Level
                       </button>
                       <button
                         className="alert-btn"
+                        style={{ marginTop: '1rem', padding: '0.7rem 2rem', fontSize: '1.1rem', borderRadius: '8px', background: '#dc3545', color: '#fff', border: 'none', boxShadow: '0 2px 8px rgba(0,0,0,0.08)' }}
                         onClick={() => {
                           socket.emit("sendAlert");
                         }}

@@ -11,15 +11,15 @@
 #include <LiquidCrystal.h>
 #include <OneWire.h>
 #include <DallasTemperature.h>
-#include <Adafruit_Fingerprint.h>
+
+// ---------------- Ultrasonic ----------------
+#define TRIG_PIN 33
+#define ECHO_PIN 32
+
+bool ultraActive = false;
 
 // ---------------- Servo ----------------
 Servo armServo;
-// --------------- Fingerprint ----------------
-HardwareSerial FingerSerial(2);
-Adafruit_Fingerprint finger(&FingerSerial);
-
-bool fingerprintMatchActive = false;
 
 // ---------------- HX711 Load Cell ----------------
 #define LOADCELL_DOUT_PIN 4  // DT
@@ -51,25 +51,6 @@ OneWire oneWire(ONE_WIRE_BUS);
 DallasTemperature sensors(&oneWire);
 bool tempActive = false;
 
-
-// ---------------- Ultrasonic ----------------
-#define TRIG_PIN 33
-#define ECHO_PIN 32
-
-bool ultraActive = false;
-
-// ---------------- Moisture Sensor ----------------
-#define MOISTURE_PIN 34   // ADC1 pin (SAFE on ESP32)
-
-#define DRY_VALUE 4095    // air / dry
-#define WET_VALUE 1500    // fully wet (calibrate!)
-
-bool moistureActive = false;
-unsigned long lastMoistureRead = 0;
-const unsigned long moistureInterval = 500; // ms
-
-
-
 // ---------------- Notifications -----------------
 bool sendNotification = false; // Control sending notification
 
@@ -92,19 +73,51 @@ const int MAX_WEIGHT_READINGS = 30;
 // RS, E, D4, D5, D6, D7
 LiquidCrystal lcd(21, 22, 19, 18, 5, 15);
 
+long readOnce() {
+  digitalWrite(TRIG_PIN, LOW);
+  delayMicroseconds(2);
+  digitalWrite(TRIG_PIN, HIGH);
+  delayMicroseconds(10);
+  digitalWrite(TRIG_PIN, LOW);
+
+  return pulseIn(ECHO_PIN, HIGH, 30000); // 30 ms timeout
+}
+
+float getStableDistance() {
+  long values[5];
+  int valid = 0;
+
+  for (int i = 0; i < 5; i++) {
+    long d = readOnce();
+    if (d > 0) values[valid++] = d;
+    delay(60);
+  }
+
+  if (valid < 3) return -1;
+
+  // sort values
+  for (int i = 0; i < valid - 1; i++) {
+    for (int j = i + 1; j < valid; j++) {
+      if (values[j] < values[i]) {
+        long t = values[i];
+        values[i] = values[j];
+        values[j] = t;
+      }
+    }
+  }
+
+  long median = values[valid / 2];
+  return median * 0.034 / 2;
+}
+
+
 void setup() {
   Serial.begin(115200);
   delay(1000);
+//ultra
+  pinMode(TRIG_PIN, OUTPUT);
+pinMode(ECHO_PIN, INPUT);
 
-  // ---- Fingerprint Setup ----
-FingerSerial.begin(57600, SERIAL_8N1, 16, 17);
-finger.begin(57600);
-
-if (finger.verifyPassword()) {
-  Serial.println("✅ Fingerprint sensor ready");
-} else {
-  Serial.println("❌ Fingerprint sensor NOT detected");
-}
 
   // ---- Servo Setup ----
   armServo.attach(13);
@@ -136,14 +149,6 @@ if (finger.verifyPassword()) {
   sensors.begin();
   Serial.println("🌡️ Temperature Sensor Ready!");
 
-//ultra
-  pinMode(TRIG_PIN, OUTPUT);
-pinMode(ECHO_PIN, INPUT);
-
-// ---- Moisture Sensor Setup ----
-analogReadResolution(12);
-analogSetPinAttenuation(MOISTURE_PIN, ADC_11db);
-Serial.println("💧 Moisture Sensor Ready!");
 
   // ---- Blynk Setup ----
   Blynk.begin(BLYNK_AUTH_TOKEN, ssid, pass);
@@ -249,15 +254,6 @@ else if (command.equalsIgnoreCase("ALERT")) {
     else if (command.equalsIgnoreCase("LEFT")) { armServo.write(90); Serial.println("➡️ Servo moved LEFT (90°)"); }
     else if (command.equalsIgnoreCase("ULTRA")) { ultraActive = true; Serial.println("📡 Ultrasonic Monitoring STARTED"); }
     else if (command.equalsIgnoreCase("USTOP")) { ultraActive = false; Serial.println("📡 Ultrasonic Monitoring STOPPED"); }
-     else if (command.equalsIgnoreCase("MOIST")) { moistureActive = true; Serial.println("💧 Moisture Reading STARTED");}
-    else if (command.equalsIgnoreCase("MSTOP")) { moistureActive = false; Serial.println("💧 Moisture Reading STOPPED");
-    else if (command.equalsIgnoreCase("FP_MATCH")) {
-  fingerprintMatchActive = true;
-  Serial.println("🔍 Fingerprint matching started");
-  lcd.setCursor(0,1);
-  lcd.print("Place Finger   ");
-}
-
     else { Serial.println("⚠️ Unknown command."); }
   }
 
@@ -346,66 +342,6 @@ if (ultraActive) {
   delay(150);
 }
 
-// ---- Moisture Reading ----
-if (moistureActive && millis() - lastMoistureRead >= moistureInterval) {
 
-  lastMoistureRead = millis();
 
-  int raw = analogRead(MOISTURE_PIN);
-
-  // keep values safe
-  raw = constrain(raw, WET_VALUE, DRY_VALUE);
-
-  // convert to percentage
-  int moisturePercent = map(raw, DRY_VALUE, WET_VALUE, 0, 100);
-
-  Serial.print("Moisture Raw: ");
-  Serial.print(raw);
-  Serial.print(" | Moisture: ");
-  Serial.print(moisturePercent);
-  Serial.println(" %");
-
-  // OPTIONAL ALERT
-  if (moisturePercent >30 ) {
-    Serial.println("⚠️ HIGH MOISTURE ALERT!");
-  }
-
-  // OPTIONAL Blynk
-  Blynk.virtualWrite(V5, moisturePercent);
 }
-
-
-
-  // ---- Fingerprint Matching ----
-  if (fingerprintMatchActive) {
-    handleFingerprintMatch();
-  }
-}   // ✅ loop() ENDS HERE
-
-
-// ================= Fingerprint Function =================
-void handleFingerprintMatch() {
-  uint8_t p = finger.getImage();
-  if (p != FINGERPRINT_OK) return;
-
-  if (finger.image2Tz() != FINGERPRINT_OK) return;
-
-  p = finger.fingerSearch();
-  if (p == FINGERPRINT_OK) {
-    Serial.print("✅ Fingerprint MATCHED → ID: ");
-    Serial.println(finger.fingerID);
-
-    lcd.setCursor(0,1);
-    lcd.print("FP OK ID: ");
-    lcd.print(finger.fingerID);
-  } else {
-    Serial.println("❌ Fingerprint NOT matched");
-    lcd.setCursor(0,1);
-    lcd.print("FP Failed      ");
-  }
-
-  fingerprintMatchActive = false;
-  delay(2000);
-}
-
-

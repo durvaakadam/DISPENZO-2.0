@@ -1,46 +1,63 @@
 #define TRIG_PIN 33
 #define ECHO_PIN 32
 
-long duration;
-float distance;
-float containerHeight = 10.0;   // Height of your funnel in cm
-float lowStockThreshold = 8.0;  // Distance threshold to trigger low stock alert (tune this value)
-
-void setup() {
-  Serial.begin(115200);
-  pinMode(TRIG_PIN, OUTPUT);
-  pinMode(ECHO_PIN, INPUT);
-}
-
-void loop() {
-  // Trigger the ultrasonic sensor
+long readOnce() {
   digitalWrite(TRIG_PIN, LOW);
   delayMicroseconds(2);
   digitalWrite(TRIG_PIN, HIGH);
   delayMicroseconds(10);
   digitalWrite(TRIG_PIN, LOW);
 
-  // Measure echo
-  duration = pulseIn(ECHO_PIN, HIGH);
+  return pulseIn(ECHO_PIN, HIGH, 30000); // 30 ms timeout
+}
 
-  // Convert duration to distance in cm
-  distance = duration * 0.034 / 2;
+float getStableDistance() {
+  long values[5];
+  int valid = 0;
 
-  // Calculate fill level
-  float fillLevel = containerHeight - distance;
-  if (fillLevel < 0) fillLevel = 0; // Avoid negative values
-  float percentage = (fillLevel / containerHeight) * 100;
-
-  // Print readings
-  Serial.print("Distance from sensor: "); Serial.print(distance); Serial.println(" cm");
-  Serial.print("Fill level: "); Serial.print(fillLevel); Serial.print(" cm ("); 
-  Serial.print(percentage); Serial.println("%)");
-
-  // Low stock alert
-  if (distance > lowStockThreshold) {  // Distance increased -> low grain
-    Serial.println("⚠️ Low Stock Detected!");
+  for (int i = 0; i < 5; i++) {
+    long d = readOnce();
+    if (d > 0) values[valid++] = d;
+    delay(60);
   }
 
-  Serial.println("---------------------------");
-  delay(2000); // 2-second interval
+  if (valid < 3) return -1; // not reliable
+
+  // sort
+  for (int i = 0; i < valid - 1; i++) {
+    for (int j = i + 1; j < valid; j++) {
+      if (values[j] < values[i]) {
+        long t = values[i];
+        values[i] = values[j];
+        values[j] = t;
+      }
+    }
+  }
+
+  long median = values[valid / 2];
+  return median * 0.034 / 2;
 }
+
+void setup() {
+  Serial.begin(115200);
+  pinMode(TRIG_PIN, OUTPUT);
+  pinMode(ECHO_PIN, INPUT);
+}
+void loop() {
+  float distance = getStableDistance();
+
+  if (distance > 0 && distance < 400) {
+
+    Serial.print("Stable Distance: ");
+    Serial.print(distance);
+    Serial.println(" cm");
+
+    // LOW STOCK CONDITION
+    if (distance > 6) {
+      Serial.println("⚠️ LOW STOCK ALERT: Please Refill");
+    }
+  }
+
+  delay(100);
+}
+
