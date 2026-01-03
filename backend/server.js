@@ -104,6 +104,11 @@ const SCAN_DEBOUNCE_TIME = 500;
 let latestDistance = null;
 let latestStockStatus = null;
 
+// Moisture state
+let latestMoisturePercent = null;
+let latestMoistureRaw = null;
+let moistureAlert = false;
+
 // ------------------- Firestore -------------------
 async function fetchWeightThreshold(uid) {
   try {
@@ -317,13 +322,47 @@ if (
   }
 }
 
+  // ------------------- Moisture -------------------
+  // ------------------- Moisture -------------------
+if (message.includes("Moisture Raw")) {
+
+  const rawMatch = message.match(/Moisture Raw:\s*(\d+)/i);
+  const percentMatch = message.match(/Moisture:\s*(\d+)\s*%/i);
+
+  if (rawMatch && percentMatch) {
+    latestMoistureRaw = parseInt(rawMatch[1]);
+    latestMoisturePercent = parseInt(percentMatch[1]);
+
+    console.log(`💧 Moisture → Raw: ${latestMoistureRaw} | ${latestMoisturePercent}%`);
+
+    io.emit("moistureData", {
+      raw: latestMoistureRaw,
+      percent: latestMoisturePercent
+    });
+
+    // Alert logic
+    if (latestMoisturePercent > 80) {
+      moistureAlert = true;
+      io.emit("moistureAlert", {
+        value: latestMoisturePercent,
+        message: "⚠️ High Moisture Detected"
+      });
+    } else {
+      moistureAlert = false;
+    }
+  } else {
+    console.log("⚠️ Moisture message received but parsing failed:", message);
+  }
+
+  return;
+
+  }
+
   // ------------------- Generic Debug -------------------
   console.log("🔎 ESP32:", message);
   
   // Log current ultrasonic state every 10 messages
-  if (Math.random() < 0.1) {
-    console.log(`📊 Current ultrasonic state: Distance=${latestDistance}, Stock=${latestStockStatus}`);
-  }
+ 
 });
 
 
@@ -350,6 +389,14 @@ io.on("connection", (socket) => {
       raw: `Stock Level: ${latestStockStatus}` 
     });
   }
+
+  if (latestMoisturePercent !== null && latestMoistureRaw !== null) {
+  socket.emit("moistureData", {
+    raw: latestMoistureRaw,
+    percent: latestMoisturePercent
+  });
+}
+
 
   // Dispense water
   socket.on("dispenseWater", () => {
@@ -391,6 +438,7 @@ socket.on("stopTemperature", () => {
   esp32.write("TSTOP\n"); // stop continuous reading on ESP
 });
 
+
 socket.on("startFingerprint", () => {
   console.log("🔍 Starting fingerprint scan on ESP32");
   esp32.write("FP_MATCH\n");
@@ -401,11 +449,16 @@ socket.on("checkTemperature", () => {
     console.log("Requesting temperature from ESP...");
     esp32.write("TEMP\n"); // command must match ESP Serial handler
   });
-
+//ultra
   socket.on("checkLevel", () => {
     console.log("Requesting container level from ESP...");
     esp32.write("ULTRA\n"); // command must match ESP Serial handler
   });
+
+  socket.on("stopUltra", () => {
+  console.log("Stopping ultrasonic reading on ESP...");
+  esp32.write("USTOP\n"); // stop continuous reading on ESP
+});
 
 
   socket.on("scancard", () => {
@@ -426,6 +479,17 @@ socket.on("checkTemperature", () => {
       console.error("❌ Error updating threshold:", error);
       socket.emit("thresholdUpdateResponse", { success: false, message: "Failed to update threshold" });
     }
+  });
+
+  // Moisture controls
+  socket.on("startMoisture", () => {
+    console.log("💧 Starting moisture monitoring");
+    esp32.write("MOIST\n");
+  });
+
+  socket.on("stopMoisture", () => {
+    console.log("💧 Stopping moisture monitoring");
+    esp32.write("MSTOP\n");
   });
 
   socket.on("disconnect", () => {
