@@ -22,6 +22,7 @@ const [fingerprintError, setFingerprintError] = useState(false);
 const [fingerprintId, setFingerprintId] = useState(null);
 
   const [currentView, setCurrentView] = useState("main");
+  
   const [fingerprintPending, setFingerprintPending] = useState(false);
 
 
@@ -50,15 +51,17 @@ const [moistureRaw, setMoistureRaw] = useState(null);
   // Payment success state
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [paymentId, setPaymentId] = useState("");
-useEffect(() => {
-  socket.on("moistureData", (data) => {
-    console.log("💧 Moisture data received:", data);
-    setMoisturePercent(data.percent);
-    setMoistureRaw(data.raw);
-  });
+  
 
-  return () => socket.off("moistureData");
-}, []);
+  useEffect(() => {
+    socket.on("moistureData", (data) => {
+      console.log("💧 Moisture data received:", data);
+      setMoisturePercent(data.percent);
+      setMoistureRaw(data.raw);
+    });
+
+    return () => socket.off("moistureData");
+  }, []);
 
   useEffect(() => {
     const script = document.createElement("script");
@@ -372,41 +375,42 @@ else {
     setCurrentView("main");
   };
 
- const renderCurrentView = () => {
-  switch (currentView) {
-    case "fingerprint":
-      return renderFingerprintView();
-    case "analytics":
-      return <Analytics />;
-    case "admin":
-      return (
-        <AdminPage
-          socket={socket}
-          users={users}
-          temperatureValue={temperatureValue}
-          temperatureAlert={temperatureAlert}
-          containerLevel={containerLevel}
-          levelAlert={levelAlert}
-          ultrasonicDistance={ultrasonicDistance}
-          stockStatus={stockStatus}
-           moisturePercent={moisturePercent}
-          moistureRaw={moistureRaw}
-          onBackToUser={() => setCurrentView("main")}
-        />
-      );
-    case "main":
-    default:
-      return renderMainView();
-  }
-};
-
+  const renderCurrentView = () => {
+    switch (currentView) {
+      case "fingerprint":
+        return renderFingerprintView();
+      case "analytics":
+        return <Analytics />;
+      case "admin":
+        // Simply render AdminPage - it will handle its own authentication
+        return (
+          <AdminPage
+            socket={socket}
+            users={users}
+            temperatureValue={temperatureValue}
+            temperatureAlert={temperatureAlert}
+            containerLevel={containerLevel}
+            levelAlert={levelAlert}
+            ultrasonicDistance={ultrasonicDistance}
+            stockStatus={stockStatus}
+            moisturePercent={moisturePercent}
+            moistureRaw={moistureRaw}
+            onBackToUser={() => setCurrentView("main")}
+          />
+        );
+      case "main":
+      default:
+        return renderMainView();
+    }
+  };
 
   const renderMainView = () => (
     <>
-      {/* Toggle to Admin Page */}
+      {/* Simple Admin Button */}
       <button className="admin-btn" onClick={() => setCurrentView("admin")}>
         🔧 Go to Admin Side
       </button>
+
       <button className="scan-btn" onClick={scanCard}>
         {scanning ? "📡 Reading the Card..." : "📡 Scan My Card"}
       </button>
@@ -561,7 +565,9 @@ const renderFingerprintView = () => (
 
   return (
     <>
-      {/* Payment Success Popup */}
+      {/* Remove admin login popup from here */}
+      
+      {/* Payment Success Popup - keep this here */}
       {paymentSuccess && (
         <div className="payment-success-overlay">
           <div className="payment-success-popup">
