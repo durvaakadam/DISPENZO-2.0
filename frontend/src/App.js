@@ -46,6 +46,10 @@ const [fingerprintId, setFingerprintId] = useState(null);
   const lowStockThreshold = 20; // % fill below which alert triggers
 const [moisturePercent, setMoisturePercent] = useState(null);
 const [moistureRaw, setMoistureRaw] = useState(null);
+  
+  // Payment success state
+  const [paymentSuccess, setPaymentSuccess] = useState(false);
+  const [paymentId, setPaymentId] = useState("");
 useEffect(() => {
   socket.on("moistureData", (data) => {
     console.log("💧 Moisture data received:", data);
@@ -146,24 +150,62 @@ useEffect(() => {
   }, []);
 
 useEffect(() => {
-  socket.on("fingerprintResult", (data) => {
+  socket.on("fingerprintResult", async (data) => {
     if (data.log) {
       setFingerprintLogs((prev) => [...prev, data.log]);
     }
 
-    if (data.success) {
-      setFingerprintStatus("success");
-      setFingerprintId(data.fingerId);
-      setShowProceed(true);     // 👈 show proceed button
-      setFingerprintError(false);
+    if (data.success && data.fingerId !== null) {
+      // ✅ Fingerprint matched in sensor, now verify against database
+      const scannedFingerId = data.fingerId;
+      
+      try {
+        // Fetch the user's registered fingerprintID from database
+        const userRef = doc(db, "customer", rfidUID.trim());
+        const userSnap = await getDoc(userRef);
+        
+        if (userSnap.exists()) {
+          const user = userSnap.data();
+          const registeredFingerprintId = user.fingerprintID;
+          
+          // Compare scanned fingerprint ID with database fingerprint ID
+          if (scannedFingerId === registeredFingerprintId) {
+            // ✅ Fingerprint ID matches the user's registered ID
+            setFingerprintStatus("success");
+            setFingerprintId(scannedFingerId);
+            setShowProceed(true);
+            setFingerprintError(false);
+            setFingerprintLogs((prev) => [...prev, `✅ Fingerprint ID ${scannedFingerId} matches user ${user.Name}`]);
+          } else {
+            // ❌ Fingerprint matched but doesn't belong to this user
+            setFingerprintStatus("fail");
+            setFingerprintError(true);
+            setFingerprintLogs((prev) => [
+              ...prev, 
+              `❌ Fingerprint ID ${scannedFingerId} does not match user's registered ID ${registeredFingerprintId}`
+            ]);
+          }
+        } else {
+          // User not found in database
+          setFingerprintStatus("fail");
+          setFingerprintError(true);
+          setFingerprintLogs((prev) => [...prev, "❌ User not found in database"]);
+        }
+      } catch (error) {
+        console.error("Error verifying fingerprint ID:", error);
+        setFingerprintStatus("fail");
+        setFingerprintError(true);
+        setFingerprintLogs((prev) => [...prev, "❌ Error verifying fingerprint"]);
+      }
     } else {
+      // No match found in sensor
       setFingerprintStatus("fail");
-      setFingerprintError(true); // 👈 enable retry
+      setFingerprintError(true);
     }
   });
 
   return () => socket.off("fingerprintResult");
-}, []);
+}, [rfidUID]);
 
 
   useEffect(() => {
@@ -284,11 +326,10 @@ else {
           description: `RFID Payment - ₹${paymentAmount}`,
           handler: function (response) {
             console.log("✅ Payment Successful!", response.razorpay_payment_id);
-            alert("✅ Payment Successful! Redirecting...");
-
-            setTimeout(() => {
-              window.location.href = "/"; // Redirect to home page
-            }, 2000);
+            
+            // Show payment success popup instead of redirecting
+            setPaymentSuccess(true);
+            setPaymentId(response.razorpay_payment_id);
           },
           prefill: {
             name: user.Name || "User",
@@ -309,6 +350,26 @@ else {
       console.error("⚠️ Error fetching user data for payment:", error);
       alert("⚠️ Something went wrong. Please try again.");
     }
+  };
+
+  const handleExitUser = () => {
+    // Reset all states to initial values
+    setPaymentSuccess(false);
+    setPaymentId("");
+    setRfidUID("");
+    setEnteredPassword("");
+    setAuthSuccess(false);
+    setError("");
+    setUserData(null);
+    setDispenseMessage("");
+    setCountdown(0);
+    setFingerprintStatus(null);
+    setFingerprintId(null);
+    setFingerprintPending(false);
+    setShowProceed(false);
+    setFingerprintError(false);
+    setFingerprintLogs([]);
+    setCurrentView("main");
   };
 
  const renderCurrentView = () => {
@@ -411,15 +472,7 @@ else {
                       <button className="payment-btn" onClick={handlePayment}>
                         💳 Pay Now
                       </button>
-                      <button
-                        className="notify-btn"
-                        onClick={() => {
-                          socket.emit("sendNotification");
-                          alert("Notification command sent to ESP32!");
-                        }}
-                      >
-                        📨 Send Notification
-                      </button>
+                      
                     </div>
                   </>
                 )}
@@ -508,6 +561,64 @@ const renderFingerprintView = () => (
 
   return (
     <>
+      {/* Payment Success Popup */}
+      {paymentSuccess && (
+        <div className="payment-success-overlay">
+          <div className="payment-success-popup">
+            {/* Left Section - Success Icon & Title */}
+            <div className="success-left">
+              <div className="success-icon-large">✅</div>
+              <h2>Payment Successful!</h2>
+              <p className="success-subtitle">Transaction Completed</p>
+            </div>
+
+            {/* Right Section - Details & Actions */}
+            <div className="success-right">
+              <div className="transaction-details">
+                <div className="detail-header">
+                  <h3>Transaction Details</h3>
+                  <p className="payment-id-small">{paymentId}</p>
+                </div>
+
+                <div className="details-grid">
+                  <div className="detail-row">
+                    <span className="detail-label">👤 Customer</span>
+                    <span className="detail-value">{userData?.Name || "N/A"}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">💰 Amount Paid</span>
+                    <span className="detail-value">₹{userData?.amount || "0"}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">🎫 RFID</span>
+                    <span className="detail-value">{rfidUID || "N/A"}</span>
+                  </div>
+                  <div className="detail-row">
+                    <span className="detail-label">✓ Status</span>
+                    <span className="detail-value status-success">Completed</span>
+                  </div>
+                </div>
+              </div>
+
+              <div className="popup-actions">
+                <button 
+                  className="popup-btn notify-btn"
+                  onClick={() => {
+                    socket.emit("sendNotification");
+                    alert("📨 Notification sent to ESP32!");
+                  }}
+                >
+                  📨 Send Notification
+                </button>
+                <button className="popup-btn exit-btn" onClick={handleExitUser}>
+                  🚪 Exit & Return Home
+                </button>
+              </div>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {currentView === "analytics" && (
         <button 
           className="back-btn" 
