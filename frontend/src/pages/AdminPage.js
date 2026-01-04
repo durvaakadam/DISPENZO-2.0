@@ -118,8 +118,8 @@ function AdminPage({
       <div className="admin-login-overlay">
         <div className="admin-login-popup">
           <div className="admin-login-header">
-            <h2>Welcome back</h2>
-            <p>Enter your credentials to continue</p>
+            <h2>Authorized Personnel Access Only</h2>
+            <p>This system is monitored and logged.</p>
             <button
               className="close-login-btn"
               onClick={onBackToUser}
@@ -173,7 +173,7 @@ function AdminPage({
             {isDarkMode ? "☀️ Light" : "🌙 Dark"}
           </button>
           <button className="back-to-user-btn" onClick={handleLogout}>
-            🔙 Back to User Mode
+            User View
           </button>
         </div>
       </div>
@@ -183,7 +183,7 @@ function AdminPage({
         <div className="stat-card">
           <div className="stat-icon">👥</div>
           <div className="stat-content">
-            <p className="stat-label">Total Users</p>
+            <p className="stat-label">Total Beneficiaries</p>
             <p className="stat-value">{users.length}</p>
           </div>
         </div>
@@ -242,7 +242,7 @@ function AdminPage({
               }}
             >
               <span className="nav-icon">👥</span>
-              <span className="nav-text">Users</span>
+              <span className="nav-text">Beneficiaries</span>
               <span className="nav-badge">{users.length}</span>
             </button>
             <button
@@ -285,7 +285,7 @@ function AdminPage({
           {adminView === "users" && (
             <div className="users-section">
               <div className="section-header">
-                <h2>System Users ({filteredUsers.length})</h2>
+                <h2>System Beneficiaries ({filteredUsers.length})</h2>
                 <div className="header-controls">
                   <input
                     type="text"
@@ -306,7 +306,7 @@ function AdminPage({
               </div>
               {filteredUsers.length === 0 ? (
                 <p className="no-data">
-                  {searchTerm ? "No users match your search" : "No users found"}
+                  {searchTerm ? "No beneficiaries match your search" : "No beneficiaries found"}
                 </p>
               ) : (
                 <table className="users-table">
@@ -456,7 +456,7 @@ function AdminPage({
                             }`}
                             onClick={handleTemperature}
                           >
-                            {tempActive ? "⏹ Stop" : "▶ Start"}
+                            {tempActive ? "⏹ Deactivate" : "▶ Activate"}
                           </button>
                         </div>
                       </div>
@@ -560,12 +560,12 @@ function AdminPage({
                             }`}
                             onClick={handleUltrasonic}
                           >
-                            {ultraActive ? "⏹ Stop" : "▶ Start"}
+                            {ultraActive ? "⏹ Deactivate" : "▶ Activate"}
                           </button>
 
                           <div className="detail-buttons">
                             <button className="detail-btn alert" onClick={handleSendAlert}>
-                              Alert
+                              Issue Alert
                             </button>
                           </div>
                         </div>
@@ -646,7 +646,7 @@ function AdminPage({
                             }`}
                             onClick={handleMoisture}
                           >
-                            {moistureActive ? "⏹ Stop" : "▶ Start"}
+                            {moistureActive ? "⏹ Deactivate" : "▶ Activate"}
                           </button>
                         </div>
                       </div>
@@ -660,15 +660,6 @@ function AdminPage({
           {/* Analytics View - Full Screen */}
           {adminView === "analytics" && (
             <div className="analytics-fullscreen">
-              <div className="analytics-header">
-                <h2>📈 Analytics Dashboard</h2>
-                <button
-                  className="analytics-close"
-                  onClick={() => setAdminView("monitoring")}
-                >
-                  ✕ Back
-                </button>
-              </div>
               <div className="analytics-content">
                 <Analytics />
               </div>

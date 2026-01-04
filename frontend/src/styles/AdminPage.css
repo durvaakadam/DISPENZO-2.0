@@ -1302,12 +1302,12 @@
 .card-value {
   font-size: 3rem;
   font-weight: 900;
-  color: #fff;
+  color: #000000;
   margin: 0;
   line-height: 1.1;
   letter-spacing: 1px;
   padding: 12px 0;
-  background: linear-gradient(135deg, #3e4055, #252836);
+  background: whitesmoke;
   border-radius: 10px;
   min-height: 60px;
   display: flex;
@@ -1488,15 +1488,16 @@
   bottom: 0;
   width: 100%;
   height: 100vh;
-  background: #2a2d3e;
+  background: transparent;
   z-index: 1000;
   display: flex;
   flex-direction: column;
   animation: slideInFull 0.4s ease;
+  overflow-y: auto;
 }
 
 .admin-page.light-mode .analytics-fullscreen {
-  background: #ffffff;
+  background: transparent;
 }
 
 @keyframes slideInFull {

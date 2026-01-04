@@ -38,6 +38,7 @@ const Analytics = () => {
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('7d');
   const [selectedView, setSelectedView] = useState('overview');
+  const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
     // Load CSV data
@@ -76,6 +77,10 @@ const Analytics = () => {
       });
   }, []);
 
+ const handleBackToHome = () => {
+  window.history.back();   // ⬅️ goes back to the page that opened Analytics
+};
+
   const renderView = () => {
     switch (selectedView) {
       case 'overview':
@@ -112,11 +117,25 @@ const Analytics = () => {
   }
 
   return (
-    <div className="analytics-container">
+    <div className={`analytics-container ${isDarkMode ? 'dark-mode' : 'light-mode'}`}>
       <div className="analytics-header">
         <h1>DISPENZO 2.0 Analytics</h1>
         
         <div className="controls">
+          <button
+            className="back-to-admin-btn"
+            onClick={handleBackToHome}
+            title="Back to Home"
+          >
+            🏠 Home
+          </button>
+          <button
+            className="theme-toggle-btn"
+            onClick={() => setIsDarkMode(!isDarkMode)}
+            title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
+          >
+            {isDarkMode ? "☀️ Light" : "🌙 Dark"}
+          </button>
           <div className="view-selector">
             <button 
               className={selectedView === 'overview' ? 'active' : ''}
