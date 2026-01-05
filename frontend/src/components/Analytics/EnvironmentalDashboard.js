@@ -9,107 +9,82 @@ import {
   Title,
   Tooltip,
   Legend,
+  Filler,
 } from "chart.js";
-import { rtdb } from "../../firebase2"; // ✅ your realtime DB config
-import { ref, onValue } from "firebase/database";
 
-// register chart components
-ChartJS.register(LineElement, CategoryScale, LinearScale, PointElement, Title, Tooltip, Legend);
+// 🔹 REQUIRED for Chart.js v3+
+ChartJS.register(
+  LineElement,
+  CategoryScale,
+  LinearScale,
+  PointElement,
+  Title,
+  Tooltip,
+  Legend,
+  Filler
+);
 
-const EnvironmentalDashboard = () => {
-  const [temperatureData, setTemperatureData] = useState([]);
-  const [latestTemp, setLatestTemp] = useState(null);
+const MAX_POINTS = 30;
 
+const EnvironmentalDashboard = ({ temperatureValue }) => {
+  const [labels, setLabels] = useState([]);
+  const [values, setValues] = useState([]);
+
+  // 🔁 Update graph whenever sensor value changes
   useEffect(() => {
-    const tempRef = ref(rtdb, "Dispenzo_Transactions/Live_Sensors/Temperature");
+    if (temperatureValue == null) return;
 
-    const unsubscribe = onValue(tempRef, (snapshot) => {
-      const data = snapshot.val();
-      if (data) {
-        const newEntry = {
-          value: parseFloat(data.value),
-          timestamp: new Date(data.timestamp),
-        };
+    const time = new Date().toLocaleTimeString();
 
-        setLatestTemp(newEntry.value);
-
-        // append new data locally
-        setTemperatureData((prev) => {
-          if (prev.length > 0 && prev[prev.length - 1].timestamp.getTime() === newEntry.timestamp.getTime()) {
-            return prev; // skip duplicate timestamp
-          }
-          const updated = [...prev, newEntry];
-          return updated.slice(-30); // keep last 30 readings
-        });
-      }
-    });
-
-    return () => unsubscribe();
-  }, []);
-
-  const sortedData = [...temperatureData].sort((a, b) => a.timestamp - b.timestamp);
+    setLabels((prev) => [...prev, time].slice(-MAX_POINTS));
+    setValues((prev) => [...prev, Number(temperatureValue)].slice(-MAX_POINTS));
+  }, [temperatureValue]);
 
   const chartData = {
-    labels: sortedData.map((d) =>
-      d.timestamp.toLocaleTimeString("en-US", { hour12: false, hour: "2-digit", minute: "2-digit", second: "2-digit" })
-    ),
+    labels,
     datasets: [
       {
-        label: "Temperature (°C)",
-        data: sortedData.map((d) => d.value),
+        label: "Live Temperature (°C)",
+        data: values,
         borderColor: "#ff3366",
-        backgroundColor: "rgba(255, 99, 132, 0.2)",
+        backgroundColor: "rgba(255, 51, 102, 0.2)",
         tension: 0.3,
+        pointRadius: 3,
         fill: true,
-        pointRadius: 2,
       },
     ],
   };
 
   const chartOptions = {
     responsive: true,
+    maintainAspectRatio: false,
     animation: false,
     plugins: {
-      legend: { position: "top" },
-      title: { display: true, text: "🌡 Real-Time Temperature Monitoring" },
+      title: {
+        display: true,
+        text: "🌡 Live Temperature (Sensor)",
+      },
+      legend: {
+        display: false,
+      },
     },
     scales: {
       y: {
-        beginAtZero: false,
-        min: sortedData.length ? Math.min(...sortedData.map((d) => d.value)) - 1 : 0,
-        max: sortedData.length ? Math.max(...sortedData.map((d) => d.value)) + 1 : 50,
-        title: { display: true, text: "Temperature (°C)" },
-      },
-      x: {
-        title: { display: true, text: "Time" },
-        ticks: { maxTicksLimit: 10 },
+        suggestedMin: 15,
+        suggestedMax: 45,
       },
     },
   };
 
   return (
-    <div style={{ padding: "20px" }}>
-      <h2>🌡 Live Temperature Dashboard</h2>
-
-      <div
-        style={{
-          marginBottom: "20px",
-          padding: "10px 20px",
-          background: "#f9f9f9",
-          borderRadius: "10px",
-          width: "fit-content",
-          boxShadow: "0 2px 6px rgba(0,0,0,0.1)",
-        }}
-      >
-        <h4>Current Temperature</h4>
-        <span style={{ fontSize: "1.8rem", fontWeight: "bold", color: "#ff3366" }}>
-          {latestTemp !== null ? `${latestTemp.toFixed(2)}°C` : "Loading..."}
-        </span>
-      </div>
-
-      <div style={{ width: "100%", maxWidth: "900px" }}>
-        <Line data={chartData} options={chartOptions} />
-      </div>
+    <div
+      style={{
+        maxWidth: "900px",
+        height: "420px",
+        margin: "20px auto",
+      }}
+    >
+      <Line data={chartData} options={chartOptions} />
     </div>
   );
 };
