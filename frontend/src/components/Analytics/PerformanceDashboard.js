@@ -1,169 +1,147 @@
-import React from 'react';
-import { Line, Bar, Scatter } from 'react-chartjs-2';
+import React, { useState } from "react";
+import { Bar, Line } from "react-chartjs-2";
+import "chart.js/auto";
+import { useSensorErrors } from "./useSensorErrors";
+import "./Performance.css";
 
-const PerformanceDashboard = ({ data, timeRange }) => {
-  // Dispense time analysis
-  const getDispenseTimeData = () => {
-    const timeData = data.map(item => item['Dispense_Time (s)']).filter(time => time > 0);
-    const avgTime = timeData.reduce((sum, time) => sum + time, 0) / timeData.length;
-    
-    const hourlyAvg = {};
-    data.forEach(item => {
-      const hour = new Date(`2000-01-01 ${item.Time}`).getHours();
-      if (!hourlyAvg[hour]) hourlyAvg[hour] = { total: 0, count: 0 };
-      hourlyAvg[hour].total += item['Dispense_Time (s)'];
-      hourlyAvg[hour].count++;
-    });
+const PerformanceDashboard = () => {
+  const [centerId, setCenterId] = useState("RDC-MH-GORAI-01");
+  const { errors, loading } = useSensorErrors(centerId);
 
-    const labels = Array.from({length: 24}, (_, i) => `${i}:00`);
-    const avgTimes = labels.map((_, hour) => 
-      hourlyAvg[hour] ? (hourlyAvg[hour].total / hourlyAvg[hour].count).toFixed(2) : 0
-    );
+  if (loading) return <p>Loading system performance...</p>;
+  if (!errors.length) return <p>No sensor errors recorded</p>;
 
-    return {
-      labels,
-      datasets: [{
-        label: 'Average Dispense Time (s)',
-        data: avgTimes,
-        borderColor: 'rgb(255, 99, 132)',
-        backgroundColor: 'rgba(255, 99, 132, 0.2)',
-        tension: 0.1
-      }]
-    };
+  /* ================= SUMMARY ================= */
+  const criticalErrors = errors.filter(e => e.severity === "HIGH").length;
+  const resolvedErrors = errors.filter(e => e.resolved).length;
+  const uptime =
+    (((errors.length - criticalErrors) / errors.length) * 100).toFixed(1);
+
+  /* ================= BAR: Errors by Sensor ================= */
+  const sensorCounts = {};
+  errors.forEach(e => {
+    sensorCounts[e.sensorType] = (sensorCounts[e.sensorType] || 0) + 1;
+  });
+
+  const sensorErrorChart = {
+    labels: Object.keys(sensorCounts),
+    datasets: [{
+      label: "Error Count",
+      data: Object.values(sensorCounts),
+      backgroundColor: "#f44336",
+    }]
   };
 
-  // Power consumption analysis
-  const getPowerConsumptionData = () => {
-    const sortedData = [...data].sort((a, b) => a.Date - b.Date);
-    
-    return {
-      labels: sortedData.map(item => item.Date.toLocaleDateString()),
-      datasets: [{
-        label: 'Power Consumption (W)',
-        data: sortedData.map(item => item['Power_Consumption (W)']),
-        borderColor: 'rgb(75, 192, 192)',
-        backgroundColor: 'rgba(75, 192, 192, 0.2)',
-        tension: 0.1
-      }]
-    };
+  /* ================= LINE: Errors Over Time ================= */
+  /* ================= LINE: Errors Per Month ================= */
+const monthlyErrors = {};
+
+errors.forEach(e => {
+  monthlyErrors[e.month] = (monthlyErrors[e.month] || 0) + 1;
+});
+
+const sortedMonths = Object.keys(monthlyErrors).sort();
+
+const errorTrendChart = {
+  labels: sortedMonths,
+  datasets: [{
+    label: "Errors per Month",
+    data: sortedMonths.map(m => monthlyErrors[m]),
+    borderColor: "#ff9800",
+    backgroundColor: "rgba(255,152,0,0.3)",
+    fill: true,
+    tension: 0.3,
+  }]
+};
+
+
+  /* ================= BAR: Errors by Hour ================= */
+  const hourly = new Array(24).fill(0);
+  errors.forEach(e => {
+    if (typeof e.hour === "number") hourly[e.hour]++;
+  });
+
+  const hourlyChart = {
+    labels: Array.from({ length: 24 }, (_, i) => `${i}:00`),
+    datasets: [{
+      label: "Errors",
+      data: hourly,
+      backgroundColor: "#9c27b0",
+    }]
   };
 
-  // Efficiency scatter plot (quantity vs time)
-  const getEfficiencyData = () => {
-    const scatterData = data
-      .filter(item => item.Transaction_Status === 'Completed')
-      .map(item => ({
-        x: item['Quantity_Dispensed (kg)'],
-        y: item['Dispense_Time (s)']
-      }));
+  /* ================= BAR: Severity Distribution ================= */
+  const severityMap = { LOW: 0, MEDIUM: 0, HIGH: 0 };
+  errors.forEach(e => severityMap[e.severity]++);
 
-    return {
-      datasets: [{
-        label: 'Quantity vs Dispense Time',
-        data: scatterData,
-        backgroundColor: 'rgba(255, 99, 132, 0.6)',
-        borderColor: 'rgba(255, 99, 132, 1)'
-      }]
-    };
+  const severityChart = {
+    labels: ["LOW", "MEDIUM", "HIGH"],
+    datasets: [{
+      label: "Severity Count",
+      data: Object.values(severityMap),
+      backgroundColor: ["#4caf50", "#ff9800", "#f44336"],
+    }]
   };
-
-  // System health metrics
-  const getSystemHealthData = () => {
-    const errorCounts = {};
-    data.forEach(item => {
-      errorCounts[item.Error_Code] = (errorCounts[item.Error_Code] || 0) + 1;
-    });
-
-    const healthScore = ((errorCounts['ERR_NONE'] || 0) / data.length * 100).toFixed(1);
-    
-    return {
-      labels: Object.keys(errorCounts),
-      datasets: [{
-        label: 'Error Frequency',
-        data: Object.values(errorCounts),
-        backgroundColor: [
-          'rgba(75, 192, 192, 0.6)', // ERR_NONE - green
-          'rgba(255, 99, 132, 0.6)', // ERR_MOTOR - red
-          'rgba(255, 205, 86, 0.6)'  // ERR_SENSOR - yellow
-        ],
-        borderColor: [
-          'rgba(75, 192, 192, 1)',
-          'rgba(255, 99, 132, 1)',
-          'rgba(255, 205, 86, 1)'
-        ],
-        borderWidth: 1
-      }]
-    };
-  };
-
-  // Calculate performance metrics
-  const avgDispenseTime = (data.reduce((sum, item) => sum + item['Dispense_Time (s)'], 0) / data.length).toFixed(2);
-  const avgPowerConsumption = (data.reduce((sum, item) => sum + item['Power_Consumption (W)'], 0) / data.length).toFixed(1);
-  const systemUptime = ((data.filter(item => item.Error_Code === 'ERR_NONE').length / data.length) * 100).toFixed(1);
 
   return (
-    <div className="performance-dashboard">
-      <div className="performance-metrics">
-        <div className="metric-card">
-          <h4>Avg Dispense Time</h4>
-          <span className="metric-value">{avgDispenseTime}s</span>
-        </div>
-        <div className="metric-card">
-          <h4>Avg Power Consumption</h4>
-          <span className="metric-value">{avgPowerConsumption}W</span>
-        </div>
-        <div className="metric-card">
-          <h4>System Uptime</h4>
-          <span className="metric-value">{systemUptime}%</span>
-        </div>
+    <div className="performance-container">
+
+      {/* HEADER */}
+      <div className="performance-header">
+        <h2>System Performance & Health</h2>
+
+        <select
+          value={centerId}
+          onChange={(e) => setCenterId(e.target.value)}
+        >
+          <option value="RDC-MH-GORAI-01">Gorai Center</option>
+          <option value="RDC-MH-BORIVALI-02">Borivali Center</option>
+        </select>
       </div>
 
+      {/* SUMMARY CARDS */}
+      <div className="summary-cards">
+
+        <div className="summary-card danger">
+          <h4>Critical Errors</h4>
+          <p>{criticalErrors}</p>
+        </div>
+
+        <div className="summary-card success">
+          <h4>Resolved Errors</h4>
+          <p>{resolvedErrors}</p>
+        </div>
+
+        <div className="summary-card">
+          <h4>System Stability</h4>
+          <p>{uptime}%</p>
+        </div>
+
+      </div>
+
+      {/* CHARTS */}
       <div className="charts-grid">
-        <div className="chart-container">
-          <h3>Hourly Dispense Time Performance</h3>
-          <Line data={getDispenseTimeData()} options={{
-            responsive: true,
-            plugins: { legend: { position: 'top' } },
-            scales: { y: { beginAtZero: true } }
-          }} />
+
+        <div className="chart">
+          <h3>Errors by Sensor Type</h3>
+          <Bar data={sensorErrorChart} />
         </div>
 
-        <div className="chart-container">
-          <h3>Power Consumption Trend</h3>
-          <Line data={getPowerConsumptionData()} options={{
-            responsive: true,
-            plugins: { legend: { position: 'top' } },
-            scales: { y: { beginAtZero: true } }
-          }} />
+        <div className="chart">
+          <h3>Error Trend Over Time</h3>
+          <Line data={errorTrendChart} />
         </div>
 
-        <div className="chart-container">
-          <h3>Efficiency Analysis</h3>
-          <Scatter data={getEfficiencyData()} options={{
-            responsive: true,
-            plugins: { 
-              legend: { position: 'top' },
-              tooltip: {
-                callbacks: {
-                  label: (context) => `Quantity: ${context.parsed.x}kg, Time: ${context.parsed.y}s`
-                }
-              }
-            },
-            scales: {
-              x: { title: { display: true, text: 'Quantity Dispensed (kg)' } },
-              y: { title: { display: true, text: 'Dispense Time (s)' } }
-            }
-          }} />
+        <div className="chart">
+          <h3>Errors by Hour</h3>
+          <Bar data={hourlyChart} />
         </div>
 
-        <div className="chart-container">
-          <h3>System Health Status</h3>
-          <Bar data={getSystemHealthData()} options={{
-            responsive: true,
-            plugins: { legend: { position: 'top' } },
-            scales: { y: { beginAtZero: true } }
-          }} />
+        <div className="chart">
+          <h3>Error Severity Distribution</h3>
+          <Bar data={severityChart} />
         </div>
+
       </div>
     </div>
   );

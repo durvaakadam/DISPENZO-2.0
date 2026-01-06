@@ -15,9 +15,9 @@ import {
 import Papa from 'papaparse';
 import OverviewDashboard from './OverviewDashboard';
 import TransactionAnalytics from './TransactionAnalytics';
-import InventoryDashboard from './InventoryDashboard';
+import InventoryAnalytics from './InventoryDashboard';
 import PerformanceDashboard from './PerformanceDashboard';
-import EnvironmentalDashboard from './EnvironmentalDashboard';
+
 import './Analytics.css';
 
 // Register Chart.js components
@@ -34,11 +34,11 @@ ChartJS.register(
 );
 
 const Analytics = () => {
+  const [adminView, setAdminView] = useState("monitoring");
   const [data, setData] = useState([]);
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('7d');
   const [selectedView, setSelectedView] = useState('overview');
-  const [isDarkMode, setIsDarkMode] = useState(false);
 
   useEffect(() => {
     // Load CSV data
@@ -77,10 +77,6 @@ const Analytics = () => {
       });
   }, []);
 
- const handleBackToHome = () => {
-  window.history.back();   // ⬅️ goes back to the page that opened Analytics
-};
-
   const renderView = () => {
     switch (selectedView) {
       case 'overview':
@@ -88,11 +84,9 @@ const Analytics = () => {
       case 'transactions':
         return <TransactionAnalytics data={data} timeRange={timeRange} />;
       case 'inventory':
-        return <InventoryDashboard data={data} timeRange={timeRange} />;
+        return <InventoryAnalytics data={data} timeRange={timeRange} />;
       case 'performance':
         return <PerformanceDashboard data={data} timeRange={timeRange} />;
-      case 'environmental':
-        return <EnvironmentalDashboard data={data} timeRange={timeRange} />;
       default:
         return <OverviewDashboard data={data} timeRange={timeRange} />;
     }
@@ -117,25 +111,11 @@ const Analytics = () => {
   }
 
   return (
-    <div className={`analytics-container ${isDarkMode ? 'dark-mode' : 'light-mode'}`}>
+    <div className="analytics-container">
       <div className="analytics-header">
         <h1>DISPENZO 2.0 Analytics</h1>
         
         <div className="controls">
-          <button
-            className="back-to-admin-btn"
-            onClick={handleBackToHome}
-            title="Back to Home"
-          >
-            🏠 Home
-          </button>
-          <button
-            className="theme-toggle-btn"
-            onClick={() => setIsDarkMode(!isDarkMode)}
-            title={isDarkMode ? "Switch to Light Mode" : "Switch to Dark Mode"}
-          >
-            {isDarkMode ? "☀️ Light" : "🌙 Dark"}
-          </button>
           <div className="view-selector">
             <button 
               className={selectedView === 'overview' ? 'active' : ''}
@@ -161,11 +141,10 @@ const Analytics = () => {
             >
               Performance
             </button>
-            <button 
-              className={selectedView === 'environmental' ? 'active' : ''}
-              onClick={() => setSelectedView('environmental')}
-            >
-              Environment
+            
+
+            <button className="analytics-close" onClick={() => setAdminView("monitoring")}>
+              ✕ Back
             </button>
           </div>
         </div>

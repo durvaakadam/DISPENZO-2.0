@@ -550,77 +550,148 @@ const dispenseHelp = {
     </>
   );
 const renderFingerprintView = () => (
-  <div className="fingerprint-container">
-    <VoiceGuide scripts={fingerprintHelp} />
-    
-    {/* ICON */}
-    <div className="fingerprint-animation">🖐️</div>
+  <div className="fp-page">
 
-    {/* TITLE */}
-    <h2>Fingerprint Verification</h2>
+    {/* HEADER */}
+    <div className="fp-header">
+      <h1>DISPENZO</h1>
+      <span>Secure Ration Distribution System</span>
+    </div>
 
-    {/* Terminal logs from ESP32 */}
-    {fingerprintLogs.length > 0 && (
-      <div className="fingerprint-log-box">
-        {fingerprintLogs.map((log, idx) => (
-          <div key={idx}>{log}</div>
-        ))}
+    {/* BODY */}
+    <div className="fp-body">
+
+      {/* LEFT FLOW */}
+      <div className="fp-flow">
+
+        <h3>Authentication Flow</h3>
+
+        <div className="fp-flow-step completed">
+          <span className="fp-check"></span>
+          <p>RFID Card Scanned</p>
+        </div>
+
+        <div className={`fp-flow-step ${
+          fingerprintStatus === null ? "active" : "completed"
+        }`}>
+          <span className="fp-check"></span>
+          <p>Fingerprint Scanning</p>
+        </div>
+
+        <div className={`fp-flow-step ${
+          fingerprintStatus === "success"
+            ? "completed"
+            : fingerprintStatus === "fail"
+            ? "failed"
+            : "pending"
+        }`}>
+          <span className="fp-check"></span>
+          <p>Fingerprint Verification</p>
+        </div>
+
+        <div className={`fp-flow-step ${
+          fingerprintStatus === "success" ? "completed" : "pending"
+        }`}>
+          <span className="fp-check"></span>
+          <p>Access Authorization</p>
+        </div>
+
+        <div className="fp-flow-note">
+          Identity verification is required before dispensing ration items.
+        </div>
       </div>
-    )}
 
-    {/* 🔁 CONDITIONAL UI */}
-    {fingerprintStatus === null && (
-      <p className="fingerprint-wait">
-        Waiting for fingerprint match...
-      </p>
-    )}
+      {/* RIGHT SCANNER */}
+      <div className="fp-scanner-section">
 
-    {fingerprintStatus === "success" && (
-      <div style={{ color: 'lightgreen', textAlign: 'center' }}>
-        <h3>✅ Fingerprint Matched</h3>
-        <p>Fingerprint ID: <strong>{fingerprintId}</strong></p>
-      </div>
-    )}
+        <div className={`fp-scanner 
+          ${fingerprintStatus === "success" ? "success" : ""}
+          ${fingerprintStatus === "fail" ? "fail" : ""}
+        `}>
+          <img
+            src={require("./assets/finger.jpg")}
+            alt="Fingerprint"
+            className="fp-image"
+          />
+          <div className="fp-scan-line"></div>
+        </div>
 
-    {fingerprintStatus === "fail" && (
-      <div style={{ color: '#ff4d4d', textAlign: 'center' }}>
-        <h3>❌ Fingerprint Not Matched</h3>
-        <p>Please try again</p>
-      </div>
-    )}
-    {/* 🔁 RETRY BUTTON */}
+        {fingerprintStatus === null && (
+          <p className="fp-status scanning">Scanning fingerprint…</p>
+        )}
+
+        {fingerprintStatus === "success" && (
+          <p className="fp-status success">
+            Fingerprint Verified<br />
+            ID: {fingerprintId}
+          </p>
+        )}
+
+        {fingerprintStatus === "fail" && (
+          <p className="fp-status fail">
+            Fingerprint Not Recognized
+          </p>
+        )}
+
+        {/* LOGS */}
+        {/* SIMPLE STATUS MESSAGE */}
+{fingerprintStatus === null && (
+  <p className="fp-text scanning">
+    Please place your finger on the scanner
+  </p>
+)}
+
+{fingerprintStatus === "success" && (
+  <p className="fp-text success">
+    Identity verified successfully
+  </p>
+)}
+
 {fingerprintStatus === "fail" && (
-  <button
-    className="fingerprint-retry-btn"
-    onClick={() => {
-      setFingerprintStatus(null);
-      setFingerprintError(false);
-      setFingerprintLogs([]);
-      socket.emit("startFingerprint"); // 🔁 SAME command as first scan
-    }}
-  >
-    🔄 Retry Fingerprint
-  </button>
+  <p className="fp-text fail">
+    Verification failed. Please try again.
+  </p>
 )}
 
-{/* ✅ PROCEED BUTTON */}
-{showProceed && fingerprintStatus === "success" && (
-  <button
-    className="fingerprint-proceed-btn"
-    onClick={() => {
-      setCurrentView("main");
-      setFingerprintPending(false);
-      setShowProceed(false);
-    }}
-  >
-    ➡️ Proceed
-  </button>
-)}
 
+        {/* BUTTONS */}
+        {fingerprintStatus === "fail" && (
+          <button
+            className="fp-btn retry"
+            onClick={() => {
+              setFingerprintStatus(null);
+              setFingerprintError(false);
+              setFingerprintLogs([]);
+              socket.emit("startFingerprint");
+            }}
+          >
+            Retry Scan
+          </button>
+        )}
+
+        {showProceed && fingerprintStatus === "success" && (
+          <button
+            className="fp-btn proceed"
+            onClick={() => {
+              setCurrentView("main");
+              setFingerprintPending(false);
+              setShowProceed(false);
+            }}
+          >
+            Proceed
+          </button>
+        )}
+
+      </div>
+    </div>
+
+    {/* FOOTER */}
+    <div className="fp-footer">
+      Secure • Transparent • Automated Public Distribution
+    </div>
 
   </div>
 );
-
 
   return (
     <>

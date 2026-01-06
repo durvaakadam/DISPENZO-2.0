@@ -1,0 +1,102 @@
+
+/* ================================
+   PERFORMANCE DASHBOARD
+================================ */
+
+.performance-container {
+  padding: 20px;
+}
+
+/* ---------- HEADER ---------- */
+.performance-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+}
+
+.performance-header h2 {
+  font-size: 22px;
+  font-weight: 600;
+}
+
+.performance-header select {
+  padding: 8px 12px;
+  border-radius: 6px;
+  border: 1px solid #ccc;
+  font-size: 14px;
+  cursor: pointer;
+}
+
+/* ---------- SUMMARY CARDS ---------- */
+.summary-cards {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
+  gap: 16px;
+  margin-bottom: 30px;
+}
+
+.summary-card {
+  background: #1f2933;
+  color: #ffffff;
+  padding: 18px;
+  border-radius: 12px;
+  box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+}
+
+.summary-card h4 {
+  font-size: 14px;
+  font-weight: 500;
+  opacity: 0.85;
+}
+
+.summary-card p {
+  font-size: 28px;
+  font-weight: 700;
+  margin-top: 8px;
+}
+
+/* Card variants */
+.summary-card.success {
+  border-left: 5px solid #2e7d32;
+}
+
+.summary-card.danger {
+  border-left: 5px solid #d32f2f;
+}
+
+.summary-card.warning {
+  border-left: 5px solid #f57c00;
+}
+
+/* ---------- CHARTS GRID ---------- */
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+  gap: 24px;
+}
+
+.chart {
+  background: #ffffff;
+  padding: 18px;
+  border-radius: 12px;
+  box-shadow: 0 10px 25px rgba(0, 0, 0, 0.15);
+}
+
+.chart h3 {
+  margin-bottom: 12px;
+  font-size: 16px;
+  font-weight: 600;
+}
+
+/* ---------- RESPONSIVE ---------- */
+@media (max-width: 768px) {
+  .performance-header {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 10px;
+  }
+}
+
+
+
