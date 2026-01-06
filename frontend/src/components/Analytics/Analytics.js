@@ -39,8 +39,14 @@ const Analytics = () => {
   const [loading, setLoading] = useState(true);
   const [timeRange, setTimeRange] = useState('7d');
   const [selectedView, setSelectedView] = useState('overview');
+  const [isDarkMode, setIsDarkMode] = useState(true);
 
   useEffect(() => {
+    loadData();
+  }, []);
+
+  const loadData = () => {
+    setLoading(true);
     // Load CSV data
     fetch('/data/Dispenzo_2.0_Variation_Dataset.csv')
       .then(response => response.text())
@@ -49,7 +55,7 @@ const Analytics = () => {
           header: true,
           complete: (result) => {
             const formattedData = result.data
-              .filter(row => row.Transaction_ID) // Filter out empty rows
+              .filter(row => row.Transaction_ID)
               .map(row => ({
                 ...row,
                 Date: new Date(row.Date),
@@ -75,7 +81,12 @@ const Analytics = () => {
         console.error('Error loading CSV:', error);
         setLoading(false);
       });
-  }, []);
+  };
+
+  const handleBackClick = () => {
+    // Refresh the page
+    window.location.reload();
+  };
 
   const renderView = () => {
     switch (selectedView) {
@@ -111,7 +122,10 @@ const Analytics = () => {
   }
 
   return (
-    <div className="analytics-container">
+    <div className={`analytics-container ${isDarkMode ? 'dark-mode' : 'light-mode'}`}>
+      {/* Theme Toggle Button */}
+     
+
       <div className="analytics-header">
         <h1>DISPENZO 2.0 Analytics</h1>
         
@@ -141,10 +155,13 @@ const Analytics = () => {
             >
               Performance
             </button>
-            
 
-            <button className="analytics-close" onClick={() => setAdminView("monitoring")}>
-              ✕ Back
+            <button 
+              className="analytics-close" 
+              onClick={handleBackClick}
+              title="Refresh and go back"
+            >
+              🔄 BACK
             </button>
           </div>
         </div>
