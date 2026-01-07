@@ -639,7 +639,10 @@ p {
   margin-top: 10px;
   text-align: center;
 }
-
+fp-text scanning{
+  color: #000000;
+  font-size: 30px;
+}
 .fp-status.scanning {
   color: #667eea;
 }
