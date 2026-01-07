@@ -280,7 +280,7 @@ else {
 
   const startCountdown = (message, callback) => {
     setCountdown(5);
-    setDispenseMessage(`${message} in 5 seconds...`);
+    setDispenseMessage(message);
 
     const interval = setInterval(() => {
       setCountdown((prev) => {
@@ -297,7 +297,7 @@ else {
 
   const handleDispenseWater = () => {
     if (countdown === 0) {
-      startCountdown("Dispensing water", () => socket.emit("dispenseWater"));
+      startCountdown("Dispensing Liquid", () => socket.emit("dispenseWater"));
     }
   };
 
@@ -459,37 +459,62 @@ const dispenseHelp = {
     <>
       {/* Simple Admin Button */}
       <button className="admin-btn" onClick={() => setCurrentView("admin")}>
-        🔧 Go to Admin Side
-      </button>
+        Admin Login
+      </button>  
+      {/* HEREDURVA */}
+      
+      
+      
+      
 
-      <VoiceGuide scripts={scanCardHelp} />
+      <VoiceGuide scripts={
+        authSuccess && userData 
+          ? dispenseHelp 
+          : rfidUID && !authSuccess 
+          ? passwordHelp 
+          : scanCardHelp
+      } />
 
-      <button className="scan-btn" onClick={scanCard}>
-        {scanning ? "📡 Reading the Card..." : "📡 Scan My Card"}
-      </button>
-
+      
       <div className="rfid-container">
         <>
             {/* User Side */}
             <div className="scanner-box">
-              <div className={`dispenzo-text ${rfidUID ? "move-up" : ""}`}>
-                DISPENZO
-              </div>
-
-              {scanning || !rfidUID ? (
-                <div className="rotating-card">
-                  <div className="card-chip"></div>
-                  <div className="card-icon">📡</div>
-                  <div className="card-text">SCAN YOUR RFID CARD</div>
+              {authSuccess ? (
+                <div className="dispenzo-text dispenzo-move-up">
+                  DISPENZO
                 </div>
               ) : (
-                <p className="uid-display">Scanned UID: {rfidUID}</p>
+                <div className={`dispenzo-text ${rfidUID ? "move-up" : ""}`}>
+                  DISPENZO
+                </div>
+              )}
+              
+              {scanning || !rfidUID ? (
+                <>
+                  <div className="rotating-card">
+                    <div className="card-chip"></div>
+                    <div className="card-icon">📡</div>
+                    <div className="card-text">SCAN YOUR RFID CARD</div>
+                  </div>
+                  {!rfidUID && (
+    <button
+      className="scan-btn"
+      onClick={scanCard}
+      disabled={scanning}
+    >
+      {scanning ? "📡 Reading the Card..." : "SCAN CARD"}
+    </button>
+  )}
+
+                </>
+              ) : (
+                !authSuccess && <p className="uid-display">Scanned UID: {rfidUID}</p>
               )}
             </div>
 
             {rfidUID && !authSuccess && (
               <>
-                <VoiceGuide scripts={passwordHelp} />
                 <div className="input-container">
                   <input
                     type="password"
@@ -503,47 +528,113 @@ const dispenseHelp = {
             )}
 
             {authSuccess && userData && (
-              <div className="user-info">
-                <h2>
-                  <strong>
-                    {dispenseMessage ? dispenseMessage : "✅ Access Granted!"}
-                  </strong>
-                </h2>
-                {!dispenseMessage && (
-                  <>
-                    <VoiceGuide scripts={dispenseHelp} />
-                    <p><strong>Name:</strong> {userData.Name}</p>
-                    <p><strong>Phone:</strong> {userData.phone}</p>
-                    <p><strong>Members in the family:</strong> {userData.family_members}</p>
-                    <p><strong>Weight Allocated:</strong> {userData.weightThreshold}g</p>
+  <div className="user-info">
+    <h2>
+      <strong>
+        {dispenseMessage ? dispenseMessage : "✅ Access Granted"}
+      </strong>
+    </h2>
 
-                    <div className="button-container">
-                      <button
-                        className="dispense-btn water-btn"
-                        onClick={handleDispenseWater}
-                      >
-                        🚰 Dispense Water
-                      </button>
-                      <button
-                        className="dispense-btn grain-btn"
-                        onClick={handleDispenseGrains}
-                      >
-                        🌾 Dispense Grains
-                      </button>
-                      <button className="payment-btn" onClick={handlePayment}>
-                        💳 Pay Now
-                      </button>
-                      
-                    </div>
-                  </>
-                )}
-              </div>
-            )}
+    {!dispenseMessage && (
+      <>
+        {/* BASIC DETAILS */}
+        <div className="user-info-details">
+          <p>
+            <strong>Name: </strong>
+            <span>{userData.Name}</span>
+          </p>
+
+          <p>
+            <strong>Phone: </strong>
+            <span>{userData.phone}</span>
+          </p>
+
+          <p>
+            <strong>Family Members: </strong>
+            <span>{userData.family_members}</span>
+          </p>
+
+          <p>
+            <strong>Weight Allocated: </strong>
+            <span>{userData.weightThreshold} kg</span>
+          </p>
+
+          {userData.rdk && (
+            <p>
+              <strong>Address: </strong>
+              <span>{userData.rdk}</span>
+            </p>
+          )}
+        </div>
+
+        {/* FAMILY MEMBERS LIST */}
+        {Array.isArray(userData.members) && userData.members.length >= 0 && (
+  <div className="family-members">
+    <strong>Family Member Details</strong>
+
+    <div className="member-chips">
+      {userData.members.map((member, index) => (
+        <div key={index} className="member-chip">
+          <div className="member-name">
+            {member.name}
+          </div>
+
+          <div className="member-meta">
+            <span className="member-relation">
+              {member.relation}
+            </span>
+            <span className="member-age">
+              • {member.age} yrs
+            </span>
+            <span className="member-gender">
+              • {member.gender}
+            </span>
+          </div>
+        </div>
+      ))}
+    </div>
+  </div>
+)}
+
+
+        {/* ACTION BUTTONS */}
+        <div className="button-container">
+          <button
+            className="dispense-btn water-btn"
+            onClick={handleDispenseWater}
+          >
+            Dispense Liquid
+          </button>
+
+          <button
+            className="dispense-btn grain-btn"
+            onClick={handleDispenseGrains}
+          >
+            Dispense Grains
+          </button>
+
+          <button
+            className="payment-btn"
+            onClick={handlePayment}
+          >
+            Pay Now
+          </button>
+        </div>
+      </>
+    )}
+  </div>
+)}
+
 
             {dispenseMessage && (
-              <p className="dispense-text">
-                {dispenseMessage} ({countdown}s)
-              </p>
+              <div className="dispense-countdown-overlay">
+                <div className="dispense-countdown">
+                  {countdown}
+                </div>
+                <p className="dispense-text">
+                  {dispenseMessage}
+                </p>
+              </div>
             )}
           </>
       </div>

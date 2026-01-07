@@ -77,9 +77,9 @@ function VoiceGuide({ scripts }) {
         <option value="en-IN">English</option>
         <option value="hi-IN">हिन्दी</option>
         <option value="mr-IN">मराठी</option>
-        <option value="ta-IN">தமிழ்</option>
-        <option value="te-IN">తెలుగు</option>
-        <option value="kn-IN">ಕನ್ನಡ</option>
+        <option value="ta-IN">Tamil</option>
+        <option value="te-IN">Telugu</option>
+        <option value="kn-IN">Kannada</option>
       </select>
 
       {!speaking ? (
