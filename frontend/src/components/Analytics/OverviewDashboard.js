@@ -1,116 +1,103 @@
-import React from 'react';
-import { Line, Bar, Doughnut } from 'react-chartjs-2';
-import MetricsCard from './MetricsCard';
+import React from "react";
+import { Line, Doughnut } from "react-chartjs-2";
+import "chart.js/auto";
+import MetricsCard from "./MetricsCard";
+import { useOverviewData } from "./useOverviewData";
 
-const OverviewDashboard = ({ data, timeRange }) => {
-  // Calculate key metrics
-  const totalTransactions = data.length;
-  const successfulTransactions = data.filter(item => item.Transaction_Status === 'Completed').length;
-  const successRate = ((successfulTransactions / totalTransactions) * 100).toFixed(1);
-  const totalDispensed = data.reduce((sum, item) => sum + (item['Quantity_Dispensed (kg)'] || 0), 0);
-  const avgPowerConsumption = (data.reduce((sum, item) => sum + (item['Power_Consumption (W)'] || 0), 0) / data.length).toFixed(1);
+const OverviewDashboard = () => {
+  const { logs, loading } = useOverviewData();
 
-  // Transaction success rate over time
-  const getTransactionTrendData = () => {
-    const groupedData = {};
-    data.forEach(item => {
-      const dateKey = item.Date.toLocaleDateString();
-      if (!groupedData[dateKey]) {
-        groupedData[dateKey] = { total: 0, successful: 0 };
-      }
-      groupedData[dateKey].total++;
-      if (item.Transaction_Status === 'Completed') {
-        groupedData[dateKey].successful++;
-      }
-    });
+  if (loading) return <p>Loading overview...</p>;
+  if (!logs.length) return <p>No data available</p>;
 
-    const labels = Object.keys(groupedData).sort();
-    const successRates = labels.map(date => 
-      (groupedData[date].successful / groupedData[date].total * 100).toFixed(1)
-    );
+  /* ================= METRICS ================= */
+  const totalTransactions = logs.length;
 
-    return {
-      labels,
-      datasets: [{
-        label: 'Success Rate (%)',
-        data: successRates,
-        borderColor: 'rgb(75, 192, 192)',
-        backgroundColor: 'rgba(75, 192, 192, 0.2)',
-        tension: 0.1,
-      }]
-    };
+  const successful = logs.filter(l => l.status === "SUCCESS");
+  const successRate = ((successful.length / totalTransactions) * 100).toFixed(1);
+
+  const totalDispensed = successful.reduce(
+    (sum, l) => sum + (l.grainKg || 0),
+    0
+  );
+
+  const avgTransactionTime = (
+    logs.reduce((sum, l) => sum + (l.transactionTimeMs || 0), 0) /
+    logs.length
+  ).toFixed(1);
+
+  /* ================= SUCCESS TREND (DAILY) ================= */
+  const dailyMap = {};
+
+  logs.forEach(l => {
+    if (!dailyMap[l.day]) {
+      dailyMap[l.day] = { total: 0, success: 0 };
+    }
+    dailyMap[l.day].total++;
+    if (l.status === "SUCCESS") dailyMap[l.day].success++;
+  });
+
+  const sortedDays = Object.keys(dailyMap).sort();
+  const successTrendData = {
+    labels: sortedDays,
+    datasets: [
+      {
+        label: "Success Rate (%)",
+        data: sortedDays.map(
+          d => (dailyMap[d].success / dailyMap[d].total) * 100
+        ),
+        borderColor: "#4bc0c0",
+        backgroundColor: "rgba(75,192,192,0.3)",
+        tension: 0.3,
+      },
+    ],
   };
 
-  // Item distribution
-  const getItemDistributionData = () => {
-    const itemCounts = {};
-    data.forEach(item => {
-      if (item.Transaction_Status === 'Completed') {
-        itemCounts[item.Item_Name] = (itemCounts[item.Item_Name] || 0) + 1;
-      }
-    });
+  /* ================= ITEM DISTRIBUTION ================= */
+  const totalGrain = successful.reduce((s, l) => s + (l.grainKg || 0), 0);
+  const totalLiquid = successful.reduce((s, l) => s + (l.liquidL || 0), 0);
 
-    return {
-      labels: Object.keys(itemCounts),
-      datasets: [{
-        data: Object.values(itemCounts),
-        backgroundColor: ['#FF6384', '#36A2EB', '#FFCE56'],
-        hoverBackgroundColor: ['#FF6384', '#36A2EB', '#FFCE56']
-      }]
-    };
+  const itemDistributionData = {
+    labels: ["Grain", "Liquid"],
+    datasets: [
+      {
+        data: [totalGrain, totalLiquid],
+        backgroundColor: ["#FF6384", "#36A2EB"],
+      },
+    ],
   };
 
   return (
     <div className="overview-dashboard">
+
+      {/* METRIC CARDS */}
       <div className="metrics-grid">
-        <MetricsCard 
-          title="Total Transactions" 
-          value={totalTransactions} 
-          icon="📊"
-          trend="+12%"
-        />
-        <MetricsCard 
-          title="Success Rate" 
-          value={`${successRate}%`} 
-          icon="✅"
-          trend="+5%"
-        />
-        <MetricsCard 
-          title="Total Dispensed" 
-          value={`${totalDispensed.toFixed(1)} kg`} 
-          icon="📦"
-          trend="+8%"
-        />
-        <MetricsCard 
-          title="Avg Power Consumption" 
-          value={`${avgPowerConsumption} W`} 
+        <MetricsCard title="Total Transactions" value={totalTransactions} icon="📊" />
+        <MetricsCard title="Success Rate" value={`${successRate}%`} icon="✅" />
+        
+        <MetricsCard
+          title="Avg Transaction Time"
+          value={`${avgTransactionTime} ms`}
           icon="⚡"
-          trend="-3%"
         />
       </div>
 
+      {/* CHARTS */}
       <div className="charts-grid">
         <div className="chart-container">
           <h3>Transaction Success Rate Trend</h3>
-          <Line data={getTransactionTrendData()} options={{
-            responsive: true,
-            plugins: {
-              legend: { position: 'top' }
-            },
-            scales: {
-              y: { beginAtZero: true, max: 100 }
-            }
-          }} />
+          <Line
+            data={successTrendData}
+            options={{
+              responsive: true,
+              scales: { y: { beginAtZero: true, max: 100 } },
+            }}
+          />
         </div>
 
         <div className="chart-container">
           <h3>Item Distribution</h3>
-          <Doughnut data={getItemDistributionData()} options={{
-            responsive: true,
-            plugins: {
-              legend: { position: 'right' }
-            }
-          }} />
+          <Doughnut data={itemDistributionData} />
         </div>
       </div>
     </div>

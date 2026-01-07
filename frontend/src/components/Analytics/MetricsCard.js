@@ -1,11 +1,13 @@
 import React from 'react';
 
 const MetricsCard = ({ title, value, icon, trend, color = 'blue' }) => {
-  const getTrendColor = () => {
-    if (trend.startsWith('+')) return 'green';
-    if (trend.startsWith('-')) return 'red';
-    return 'gray';
-  };
+  const getTrendColor = (trend) => {
+  if (!trend) return "neutral";   // ✅ FIX
+  if (trend.startsWith("+")) return "positive";
+  if (trend.startsWith("-")) return "negative";
+  return "neutral";
+};
+
 
   return (
     <div className={`metrics-card ${color}`}>
