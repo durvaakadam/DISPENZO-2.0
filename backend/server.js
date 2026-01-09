@@ -8,6 +8,7 @@ const admin = require("firebase-admin");
 const serviceAccount = require("./serviceAccountKey.json");
 const rtdb = require("./firebaseRTDB");
 
+
 // ✅ Disable Firebase logging completely
 process.env.FIREBASE_AUTH_EMULATOR_HOST = undefined;
 process.env.GOOGLE_APPLICATION_CREDENTIALS = undefined;
