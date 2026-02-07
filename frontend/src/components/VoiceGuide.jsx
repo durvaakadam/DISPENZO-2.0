@@ -41,16 +41,10 @@ function VoiceGuide({ scripts, autoPlay = false, defaultLanguage = "en-IN" }) {
           window.speechSynthesis.cancel();
           
           const utterance = new SpeechSynthesisUtterance(scriptContent);
-          const selectedVoice = getBestVoice();
-          if (selectedVoice) {
-            utterance.voice = selectedVoice;
-            console.log(`🗣️ Speaking ${lang} with voice: ${selectedVoice.name} (${selectedVoice.lang})`);
-          } else {
-            console.warn(`⚠️ No voice found for ${lang}, using system default`);
-          }
-          
+          const bestVoice = getBestVoice();
+          if (bestVoice) utterance.voice = bestVoice;
           utterance.lang = lang;
-          utterance.rate = 0.85; // Slower, clearer speech for rural users
+          utterance.rate = 1.3; // ✅ Changed from 0.85
           utterance.pitch = 1;
           utterance.volume = 1;
           
@@ -76,9 +70,29 @@ function VoiceGuide({ scripts, autoPlay = false, defaultLanguage = "en-IN" }) {
   const getBestVoice = () => {
     if (!voices.length) return null;
 
-    // Exact language match
-    let voice =
-      voices.find(v => v.lang === lang) ||
+    // For Marathi - try to find Google or Microsoft voice first (better quality)
+    if (lang === "mr-IN") {
+      // First try native Marathi voices (Google/Microsoft are better)
+      let voice = voices.find(v => v.lang === "mr-IN" && (v.name.includes("Google") || v.name.includes("Microsoft")));
+      if (voice) return voice;
+      
+      // Try any Marathi voice
+      voice = voices.find(v => v.lang === "mr-IN" || v.lang.startsWith("mr"));
+      if (voice) return voice;
+      
+      // Fallback to Hindi (closest language) - prefer Google/Microsoft
+      voice = voices.find(v => (v.lang === "hi-IN" || v.lang.startsWith("hi")) && (v.name.includes("Google") || v.name.includes("Microsoft")));
+      if (voice) return voice;
+      
+      voice = voices.find(v => v.lang === "hi-IN" || v.lang.startsWith("hi"));
+      if (voice) return voice;
+    }
+
+    // Exact language match - prefer Google/Microsoft voices
+    let voice = voices.find(v => v.lang === lang && (v.name.includes("Google") || v.name.includes("Microsoft")));
+    if (voice) return voice;
+    
+    voice = voices.find(v => v.lang === lang) ||
       voices.find(v => v.lang.startsWith(lang.split("-")[0]));
 
     // Intelligent fallback for Indian languages
@@ -110,16 +124,10 @@ function VoiceGuide({ scripts, autoPlay = false, defaultLanguage = "en-IN" }) {
 
     const utterance = new SpeechSynthesisUtterance(scripts[lang]);
 
-    const selectedVoice = getBestVoice();
-    if (selectedVoice) {
-      utterance.voice = selectedVoice;
-      console.log(`🗣️ Speaking ${lang} with voice: ${selectedVoice.name} (${selectedVoice.lang})`);
-    } else {
-      console.warn(`⚠️ No voice found for ${lang}, using system default`);
-    }
-
+    const bestVoice = getBestVoice();
+    if (bestVoice) utterance.voice = bestVoice;
     utterance.lang = lang;
-    utterance.rate = 1.2;   // Slower, clearer speech for rural users
+    utterance.rate = 1.0; // ✅ Changed from 0.85
     utterance.pitch = 1;
     utterance.volume = 1;
 

@@ -23,9 +23,20 @@ const [fingerprintError, setFingerprintError] = useState(false);
 const [fingerprintId, setFingerprintId] = useState(null);
 
   const [currentView, setCurrentView] = useState("main");
-  const [showSettings, setShowSettings] = useState(false);
-  const [firstVisit, setFirstVisit] = useState(true);
+  
+  // Initialize settings based on localStorage synchronously to prevent audio playing on first render
+  const [showSettings, setShowSettings] = useState(() => {
+    const hasVisited = localStorage.getItem('dispenzo_visited');
+    return !hasVisited; // Show settings if NOT visited before
+  });
+  const [firstVisit, setFirstVisit] = useState(() => {
+    const hasVisited = localStorage.getItem('dispenzo_visited');
+    return !hasVisited;
+  });
+  // IMPORTANT: Voice mode starts DISABLED - only enabled when user explicitly saves settings with voice ON
   const [voiceAssistantMode, setVoiceAssistantMode] = useState(false);
+  // Track if user has confirmed settings this session (prevents auto-play on page load)
+  const [settingsConfirmed, setSettingsConfirmed] = useState(false);
   const [selectedLanguage, setSelectedLanguage] = useState("en-IN");
   
   const [fingerprintPending, setFingerprintPending] = useState(false);
@@ -62,9 +73,35 @@ const [moistureRaw, setMoistureRaw] = useState(null);
     const voices = window.speechSynthesis.getVoices();
     if (!voices.length) return null;
 
-    // Exact language match
-    let voice =
-      voices.find(v => v.lang === lang) ||
+    // For Marathi - try to find Google or Microsoft voice first (better quality)
+    if (lang === "mr-IN") {
+      // First try native Marathi voices (Google/Microsoft are better)
+      let voice = voices.find(v => v.lang === "mr-IN" && (v.name.includes("Google") || v.name.includes("Microsoft")));
+      if (voice) return voice;
+      
+      // Try any Marathi voice
+      voice = voices.find(v => v.lang === "mr-IN" || v.lang.startsWith("mr"));
+      if (voice) return voice;
+      
+      // Fallback to Hindi (closest language) - prefer Google/Microsoft
+      voice = voices.find(v => (v.lang === "hi-IN" || v.lang.startsWith("hi")) && (v.name.includes("Google") || v.name.includes("Microsoft")));
+      if (voice) {
+        console.log(`🗣️ Marathi fallback: using Hindi voice ${voice.name}`);
+        return voice;
+      }
+      
+      voice = voices.find(v => v.lang === "hi-IN" || v.lang.startsWith("hi"));
+      if (voice) {
+        console.log(`🗣️ Marathi fallback: using Hindi voice ${voice.name}`);
+        return voice;
+      }
+    }
+
+    // Exact language match - prefer Google/Microsoft voices
+    let voice = voices.find(v => v.lang === lang && (v.name.includes("Google") || v.name.includes("Microsoft")));
+    if (voice) return voice;
+    
+    voice = voices.find(v => v.lang === lang) ||
       voices.find(v => v.lang.startsWith(lang.split("-")[0]));
 
     // Intelligent fallback for Indian languages
@@ -92,20 +129,11 @@ const [moistureRaw, setMoistureRaw] = useState(null);
     return voice || voices[0];
   };
   
-  // Show settings modal on first visit
+  // Note: Settings initialization is now done synchronously in useState
+  // This effect is kept for any additional setup if needed in the future
   useEffect(() => {
-    const hasVisited = localStorage.getItem('dispenzo_visited');
-    if (!hasVisited) {
-      setShowSettings(true);
-      setFirstVisit(true);
-    } else {
-      setFirstVisit(false);
-      // Load saved voice mode preference only (language always defaults to English)
-      const savedVoice = localStorage.getItem('dispenzo_voice_mode');
-      if (savedVoice) setVoiceAssistantMode(savedVoice === 'true');
-      // Always start with English
-      setSelectedLanguage('en-IN');
-    }
+    // Settings are already initialized from localStorage in useState
+    // No additional setup needed on mount
   }, []);
 
   // Play voice preview immediately when enabled
@@ -128,7 +156,7 @@ const [moistureRaw, setMoistureRaw] = useState(null);
     if (selectedVoice) utterance.voice = selectedVoice;
     
     utterance.lang = selectedLanguage;
-    utterance.rate = 0.95;
+    utterance.rate = 1.3;
     utterance.pitch = 1;
     utterance.volume = 1;
     
@@ -145,31 +173,14 @@ const [moistureRaw, setMoistureRaw] = useState(null);
     localStorage.setItem('dispenzo_visited', 'true');
     localStorage.setItem('dispenzo_language', selectedLanguage);
     localStorage.setItem('dispenzo_voice_mode', voiceAssistantMode.toString());
+    
+    // Mark settings as confirmed - this enables voice guide to work
+    setSettingsConfirmed(true);
     setShowSettings(false);
     setFirstVisit(false);
     
-    // Trigger voice instructions for the current page if voice is enabled (only on main view)
-    if (voiceAssistantMode && currentView === "main") {
-      setTimeout(() => {
-        const currentInstructions = authSuccess && userData 
-          ? dispenseHelp 
-          : rfidUID && !authSuccess 
-          ? passwordHelp 
-          : scanCardHelp;
-        
-        if (currentInstructions && currentInstructions[selectedLanguage]) {
-          const utterance = new SpeechSynthesisUtterance(currentInstructions[selectedLanguage]);
-          const selectedVoice = getBestVoiceForLanguage(selectedLanguage);
-          if (selectedVoice) utterance.voice = selectedVoice;
-          
-          utterance.lang = selectedLanguage;
-          utterance.rate = 0.95;
-          utterance.pitch = 1;
-          utterance.volume = 1;
-          window.speechSynthesis.speak(utterance);
-        }
-      }, 400);
-    }
+    // Voice will be triggered by the useEffect watching showSettings change
+    // No need to manually play here - the VoiceGuide component will handle it
   };
   
   // Cancel speech when currentView changes
@@ -189,30 +200,10 @@ const [moistureRaw, setMoistureRaw] = useState(null);
         window.speechSynthesis.cancel();
       }
       
-      // Play appropriate page audio ONLY if on main view and voice mode is enabled
-      setTimeout(() => {
-        if (voiceAssistantMode && currentView === "main") {
-          const currentInstructions = authSuccess && userData 
-            ? dispenseHelp 
-            : rfidUID && !authSuccess 
-            ? passwordHelp 
-            : scanCardHelp;
-          
-          if (currentInstructions && currentInstructions[selectedLanguage]) {
-            const utterance = new SpeechSynthesisUtterance(currentInstructions[selectedLanguage]);
-            const selectedVoice = getBestVoiceForLanguage(selectedLanguage);
-            if (selectedVoice) utterance.voice = selectedVoice;
-            
-            utterance.lang = selectedLanguage;
-            utterance.rate = 0.95;
-            utterance.pitch = 1;
-            utterance.volume = 1;
-            window.speechSynthesis.speak(utterance);
-          }
-        }
-      }, 300);
+      // Audio will be handled by VoiceGuide component - no need to manually play here
+      // VoiceGuide autoPlay prop will handle audio playback when settings close
     }
-  }, [showSettings, voiceAssistantMode, authSuccess, userData, rfidUID, selectedLanguage, currentView]);
+  }, [showSettings]);
   
 
   useEffect(() => {
@@ -1171,7 +1162,8 @@ const renderFingerprintView = () => (
       )}
       
       {/* Consolidated Voice Guide - Only one instance controls all pages */}
-      {currentView === "fingerprint" && (
+      {/* Don't play audio until settings are confirmed and voice mode is enabled */}
+      {!showSettings && settingsConfirmed && currentView === "fingerprint" && (
         <VoiceGuide 
           scripts={fingerprintHelp}
           autoPlay={voiceAssistantMode}
@@ -1179,7 +1171,7 @@ const renderFingerprintView = () => (
         />
       )}
       
-      {currentView === "main" && (
+      {!showSettings && settingsConfirmed && currentView === "main" && (
         <VoiceGuide 
           scripts={
             authSuccess && userData 
