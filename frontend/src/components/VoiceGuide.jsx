@@ -1,16 +1,21 @@
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useRef } from "react";
 import "./VoiceGuide.css";
 
 function VoiceGuide({ scripts, autoPlay = false, defaultLanguage = "en-IN" }) {
   const [lang, setLang] = useState(defaultLanguage);
   const [speaking, setSpeaking] = useState(false);
   const [voices, setVoices] = useState([]);
+  const lastPlayedScriptRef = useRef(null);
 
   // Load voices safely (Chrome async fix)
   useEffect(() => {
     const loadVoices = () => {
       const v = window.speechSynthesis.getVoices();
-      if (v.length > 0) setVoices(v);
+      if (v.length > 0) {
+        setVoices(v);
+        // Debug: Log available voices
+        console.log("🎤 Available Voices:", v.map(voice => `${voice.name} (${voice.lang})`));
+      }
     };
 
     loadVoices();
@@ -21,34 +26,47 @@ function VoiceGuide({ scripts, autoPlay = false, defaultLanguage = "en-IN" }) {
     };
   }, []);
 
-  // Auto-play when scripts change and autoPlay is enabled
+  // Auto-play when autoPlay is enabled - only trigger once per new script
   useEffect(() => {
     if (autoPlay && scripts?.[lang] && voices.length > 0) {
-      // Small delay to ensure smooth transition between pages
-      const timer = setTimeout(() => {
-        window.speechSynthesis.cancel();
-        
-        const utterance = new SpeechSynthesisUtterance(scripts[lang]);
-        const selectedVoice = getBestVoice();
-        if (selectedVoice) utterance.voice = selectedVoice;
-        
-        utterance.lang = lang;
-        utterance.rate = 1.2;
-        utterance.pitch = 1;
-        utterance.volume = 1;
-        
-        utterance.onstart = () => setSpeaking(true);
-        utterance.onend = () => setSpeaking(false);
-        utterance.onerror = () => setSpeaking(false);
-        
-        window.speechSynthesis.speak(utterance);
-      }, 500);
+      // Check if this script hasn't been played yet
+      const scriptContent = scripts[lang];
+      const scriptKey = `${lang}:${scriptContent}`;
       
-      return () => {
-        clearTimeout(timer);
-      };
+      if (lastPlayedScriptRef.current !== scriptKey) {
+        lastPlayedScriptRef.current = scriptKey;
+        
+        // Smaller delay to reduce lag
+        const timer = setTimeout(() => {
+          window.speechSynthesis.cancel();
+          
+          const utterance = new SpeechSynthesisUtterance(scriptContent);
+          const selectedVoice = getBestVoice();
+          if (selectedVoice) {
+            utterance.voice = selectedVoice;
+            console.log(`🗣️ Speaking ${lang} with voice: ${selectedVoice.name} (${selectedVoice.lang})`);
+          } else {
+            console.warn(`⚠️ No voice found for ${lang}, using system default`);
+          }
+          
+          utterance.lang = lang;
+          utterance.rate = 0.85; // Slower, clearer speech for rural users
+          utterance.pitch = 1;
+          utterance.volume = 1;
+          
+          utterance.onstart = () => setSpeaking(true);
+          utterance.onend = () => setSpeaking(false);
+          utterance.onerror = () => setSpeaking(false);
+          
+          window.speechSynthesis.speak(utterance);
+        }, 200); // Reduced from 500ms to decrease lag
+        
+        return () => {
+          clearTimeout(timer);
+        };
+      }
     }
-  }, [scripts, autoPlay, lang, voices]);
+  }, [autoPlay, lang, voices]);
 
   // Update language when defaultLanguage changes
   useEffect(() => {
@@ -63,12 +81,25 @@ function VoiceGuide({ scripts, autoPlay = false, defaultLanguage = "en-IN" }) {
       voices.find(v => v.lang === lang) ||
       voices.find(v => v.lang.startsWith(lang.split("-")[0]));
 
-    // Indian English fallback
-    if (!voice && lang === "en-IN") {
-      voice = voices.find(v => v.lang.includes("en"));
+    // Intelligent fallback for Indian languages
+    if (!voice) {
+      const languageFallbacks = {
+        "mr-IN": ["hi-IN", "hi"], // Marathi → Hindi
+        "ta-IN": ["en-IN", "en"], // Tamil → English
+        "te-IN": ["en-IN", "en"], // Telugu → English
+        "kn-IN": ["en-IN", "en"], // Kannada → English
+        "hi-IN": ["en-IN", "en"], // Hindi → English
+        "en-IN": ["en"],           // English → English
+      };
+
+      const fallbacks = languageFallbacks[lang] || [];
+      for (const fallbackLang of fallbacks) {
+        voice = voices.find(v => v.lang === fallbackLang || v.lang.startsWith(fallbackLang));
+        if (voice) break;
+      }
     }
 
-    // Last fallback
+    // Last fallback: use any available voice
     return voice || voices[0];
   };
 
@@ -80,10 +111,15 @@ function VoiceGuide({ scripts, autoPlay = false, defaultLanguage = "en-IN" }) {
     const utterance = new SpeechSynthesisUtterance(scripts[lang]);
 
     const selectedVoice = getBestVoice();
-    if (selectedVoice) utterance.voice = selectedVoice;
+    if (selectedVoice) {
+      utterance.voice = selectedVoice;
+      console.log(`🗣️ Speaking ${lang} with voice: ${selectedVoice.name} (${selectedVoice.lang})`);
+    } else {
+      console.warn(`⚠️ No voice found for ${lang}, using system default`);
+    }
 
     utterance.lang = lang;
-    utterance.rate = 1.2;   // slower for rural clarity
+    utterance.rate = 1.2;   // Slower, clearer speech for rural users
     utterance.pitch = 1;
     utterance.volume = 1;
 

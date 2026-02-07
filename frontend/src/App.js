@@ -57,6 +57,41 @@ const [moistureRaw, setMoistureRaw] = useState(null);
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [paymentId, setPaymentId] = useState("");
   
+  // Helper function to get the best voice for a language
+  const getBestVoiceForLanguage = (lang) => {
+    const voices = window.speechSynthesis.getVoices();
+    if (!voices.length) return null;
+
+    // Exact language match
+    let voice =
+      voices.find(v => v.lang === lang) ||
+      voices.find(v => v.lang.startsWith(lang.split("-")[0]));
+
+    // Intelligent fallback for Indian languages
+    if (!voice) {
+      const languageFallbacks = {
+        "mr-IN": ["hi-IN", "hi"], // Marathi → Hindi
+        "ta-IN": ["en-IN", "en"], // Tamil → English
+        "te-IN": ["en-IN", "en"], // Telugu → English
+        "kn-IN": ["en-IN", "en"], // Kannada → English
+        "hi-IN": ["en-IN", "en"], // Hindi → English
+        "en-IN": ["en"],           // English → English
+      };
+
+      const fallbacks = languageFallbacks[lang] || [];
+      for (const fallbackLang of fallbacks) {
+        voice = voices.find(v => v.lang === fallbackLang || v.lang.startsWith(fallbackLang));
+        if (voice) {
+          console.log(`🗣️ Fallback: ${lang} → using ${fallbackLang}`);
+          break;
+        }
+      }
+    }
+
+    // Last fallback: use any available voice
+    return voice || voices[0];
+  };
+  
   // Show settings modal on first visit
   useEffect(() => {
     const hasVisited = localStorage.getItem('dispenzo_visited');
@@ -89,8 +124,11 @@ const [moistureRaw, setMoistureRaw] = useState(null);
     };
     
     const utterance = new SpeechSynthesisUtterance(previewMessage[selectedLanguage]);
+    const selectedVoice = getBestVoiceForLanguage(selectedLanguage);
+    if (selectedVoice) utterance.voice = selectedVoice;
+    
     utterance.lang = selectedLanguage;
-    utterance.rate = 1.2;
+    utterance.rate = 0.95;
     utterance.pitch = 1;
     utterance.volume = 1;
     
@@ -99,14 +137,19 @@ const [moistureRaw, setMoistureRaw] = useState(null);
 
   // Save preferences to localStorage
   const saveSettings = () => {
+    // Immediately stop any ongoing speech (demo audio, preview, etc.)
+    if (window.speechSynthesis) {
+      window.speechSynthesis.cancel();
+    }
+    
     localStorage.setItem('dispenzo_visited', 'true');
     localStorage.setItem('dispenzo_language', selectedLanguage);
     localStorage.setItem('dispenzo_voice_mode', voiceAssistantMode.toString());
     setShowSettings(false);
     setFirstVisit(false);
     
-    // Trigger voice instructions for the current page if voice is enabled
-    if (voiceAssistantMode) {
+    // Trigger voice instructions for the current page if voice is enabled (only on main view)
+    if (voiceAssistantMode && currentView === "main") {
       setTimeout(() => {
         const currentInstructions = authSuccess && userData 
           ? dispenseHelp 
@@ -116,13 +159,16 @@ const [moistureRaw, setMoistureRaw] = useState(null);
         
         if (currentInstructions && currentInstructions[selectedLanguage]) {
           const utterance = new SpeechSynthesisUtterance(currentInstructions[selectedLanguage]);
+          const selectedVoice = getBestVoiceForLanguage(selectedLanguage);
+          if (selectedVoice) utterance.voice = selectedVoice;
+          
           utterance.lang = selectedLanguage;
-          utterance.rate = 1.2;
+          utterance.rate = 0.95;
           utterance.pitch = 1;
           utterance.volume = 1;
           window.speechSynthesis.speak(utterance);
         }
-      }, 300);
+      }, 400);
     }
   };
   
@@ -134,6 +180,39 @@ const [moistureRaw, setMoistureRaw] = useState(null);
       }
     };
   }, [currentView]);
+
+  // Cancel speech immediately when settings modal closes
+  useEffect(() => {
+    if (!showSettings) {
+      // Stop any ongoing demo audio or preview speech
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+      
+      // Play appropriate page audio ONLY if on main view and voice mode is enabled
+      setTimeout(() => {
+        if (voiceAssistantMode && currentView === "main") {
+          const currentInstructions = authSuccess && userData 
+            ? dispenseHelp 
+            : rfidUID && !authSuccess 
+            ? passwordHelp 
+            : scanCardHelp;
+          
+          if (currentInstructions && currentInstructions[selectedLanguage]) {
+            const utterance = new SpeechSynthesisUtterance(currentInstructions[selectedLanguage]);
+            const selectedVoice = getBestVoiceForLanguage(selectedLanguage);
+            if (selectedVoice) utterance.voice = selectedVoice;
+            
+            utterance.lang = selectedLanguage;
+            utterance.rate = 0.95;
+            utterance.pitch = 1;
+            utterance.volume = 1;
+            window.speechSynthesis.speak(utterance);
+          }
+        }
+      }, 300);
+    }
+  }, [showSettings, voiceAssistantMode, authSuccess, userData, rfidUID, selectedLanguage, currentView]);
   
 
   useEffect(() => {
@@ -552,23 +631,6 @@ const dispenseHelp = {
       </button>  
       {/* HEREDURVA */}
       
-      
-      
-      
-
-      <VoiceGuide 
-        scripts={
-          authSuccess && userData 
-            ? dispenseHelp 
-            : rfidUID && !authSuccess 
-            ? passwordHelp 
-            : scanCardHelp
-        }
-        autoPlay={voiceAssistantMode}
-        defaultLanguage={selectedLanguage}
-      />
-
-      
       <div className="rfid-container">
         <>
             {/* User Side */}
@@ -736,12 +798,6 @@ const dispenseHelp = {
 const renderFingerprintView = () => (
   <div className="fp-page">
 
-    <VoiceGuide 
-      scripts={fingerprintHelp}
-      autoPlay={voiceAssistantMode}
-      defaultLanguage={selectedLanguage}
-    />
-
     {/* HEADER */}
     <div className="fp-header">
       <h1>DISPENZO</h1>
@@ -905,7 +961,13 @@ const renderFingerprintView = () => (
               {!firstVisit && (
                 <button 
                   className="settings-close-btn" 
-                  onClick={() => setShowSettings(false)}
+                  onClick={() => {
+                    // Stop any ongoing speech (demo audio, preview, etc.)
+                    if (window.speechSynthesis) {
+                      window.speechSynthesis.cancel();
+                    }
+                    setShowSettings(false);
+                  }}
                 >
                   ✕
                 </button>
@@ -1107,6 +1169,30 @@ const renderFingerprintView = () => (
           ← Back to Main
         </button>
       )}
+      
+      {/* Consolidated Voice Guide - Only one instance controls all pages */}
+      {currentView === "fingerprint" && (
+        <VoiceGuide 
+          scripts={fingerprintHelp}
+          autoPlay={voiceAssistantMode}
+          defaultLanguage={selectedLanguage}
+        />
+      )}
+      
+      {currentView === "main" && (
+        <VoiceGuide 
+          scripts={
+            authSuccess && userData 
+              ? dispenseHelp 
+              : rfidUID && !authSuccess 
+              ? passwordHelp 
+              : scanCardHelp
+          }
+          autoPlay={voiceAssistantMode}
+          defaultLanguage={selectedLanguage}
+        />
+      )}
+      
       {renderCurrentView()}
     </>
   );
