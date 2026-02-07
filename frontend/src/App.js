@@ -23,6 +23,10 @@ const [fingerprintError, setFingerprintError] = useState(false);
 const [fingerprintId, setFingerprintId] = useState(null);
 
   const [currentView, setCurrentView] = useState("main");
+  const [showSettings, setShowSettings] = useState(false);
+  const [firstVisit, setFirstVisit] = useState(true);
+  const [voiceAssistantMode, setVoiceAssistantMode] = useState(false);
+  const [selectedLanguage, setSelectedLanguage] = useState("en-IN");
   
   const [fingerprintPending, setFingerprintPending] = useState(false);
 
@@ -52,6 +56,84 @@ const [moistureRaw, setMoistureRaw] = useState(null);
   // Payment success state
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [paymentId, setPaymentId] = useState("");
+  
+  // Show settings modal on first visit
+  useEffect(() => {
+    const hasVisited = localStorage.getItem('dispenzo_visited');
+    if (!hasVisited) {
+      setShowSettings(true);
+      setFirstVisit(true);
+    } else {
+      setFirstVisit(false);
+      // Load saved voice mode preference only (language always defaults to English)
+      const savedVoice = localStorage.getItem('dispenzo_voice_mode');
+      if (savedVoice) setVoiceAssistantMode(savedVoice === 'true');
+      // Always start with English
+      setSelectedLanguage('en-IN');
+    }
+  }, []);
+
+  // Play voice preview immediately when enabled
+  const playVoicePreview = () => {
+    if (!window.speechSynthesis) return;
+    
+    window.speechSynthesis.cancel();
+    
+    const previewMessage = {
+      "en-IN": "Voice assistant enabled. You will now hear automatic instructions on every screen.",
+      "hi-IN": "वॉयस असिस्टेंट सक्षम किया गया है। अब आपको हर स्क्रीन पर स्वचालित निर्देश सुनाई देंगे।",
+      "mr-IN": "व्हॉइस असिस्टंट सक्षम केले आहे. आता तुम्हाला प्रत्येक स्क्रीनवर स्वयंचलित सूचना ऐकू येतील.",
+      "ta-IN": "குரல் உதவியாளர் இயக்கப்பட்டது. இப்போது ஒவ்வொரு திரையிலும் தானியங்கி வழிமுறைகளை கேட்பீர்கள்.",
+      "te-IN": "వాయిస్ అసిస్టెంట్ ఎనేబుల్ చేయబడింది. ఇప్పుడు మీరు ప్రతి స్క్రీన్‌లో స్వయంచాలక సూచనలను వింటారు.",
+      "kn-IN": "ಧ್ವನಿ ಸಹಾಯಕ ಸಕ್ರಿಯಗೊಳಿಸಲಾಗಿದೆ. ಈಗ ನೀವು ಪ್ರತಿ ಪರದೆಯಲ್ಲಿ ಸ್ವಯಂಚಾಲಿತ ಸೂಚನೆಗಳನ್ನು ಕೇಳುತ್ತೀರಿ."
+    };
+    
+    const utterance = new SpeechSynthesisUtterance(previewMessage[selectedLanguage]);
+    utterance.lang = selectedLanguage;
+    utterance.rate = 1.2;
+    utterance.pitch = 1;
+    utterance.volume = 1;
+    
+    window.speechSynthesis.speak(utterance);
+  };
+
+  // Save preferences to localStorage
+  const saveSettings = () => {
+    localStorage.setItem('dispenzo_visited', 'true');
+    localStorage.setItem('dispenzo_language', selectedLanguage);
+    localStorage.setItem('dispenzo_voice_mode', voiceAssistantMode.toString());
+    setShowSettings(false);
+    setFirstVisit(false);
+    
+    // Trigger voice instructions for the current page if voice is enabled
+    if (voiceAssistantMode) {
+      setTimeout(() => {
+        const currentInstructions = authSuccess && userData 
+          ? dispenseHelp 
+          : rfidUID && !authSuccess 
+          ? passwordHelp 
+          : scanCardHelp;
+        
+        if (currentInstructions && currentInstructions[selectedLanguage]) {
+          const utterance = new SpeechSynthesisUtterance(currentInstructions[selectedLanguage]);
+          utterance.lang = selectedLanguage;
+          utterance.rate = 1.2;
+          utterance.pitch = 1;
+          utterance.volume = 1;
+          window.speechSynthesis.speak(utterance);
+        }
+      }, 300);
+    }
+  };
+  
+  // Cancel speech when currentView changes
+  useEffect(() => {
+    return () => {
+      if (window.speechSynthesis) {
+        window.speechSynthesis.cancel();
+      }
+    };
+  }, [currentView]);
   
 
   useEffect(() => {
@@ -384,7 +466,14 @@ const scanCardHelp = {
   "te-IN": "దయచేసి ‘స్కాన్ కార్డ్’పై క్లిక్ చేయండి. మీ రేషన్ కార్డును స్కానర్ దగ్గర ఉంచి చదవబడే వరకు వేచి ఉండండి.",
   "kn-IN": "ದಯವಿಟ್ಟು ‘ಸ್ಕ್ಯಾನ್ ಕಾರ್ಡ್’ ಕ್ಲಿಕ್ ಮಾಡಿ. ನಿಮ್ಮ ರೇಷನ್ ಕಾರ್ಡ್ ಅನ್ನು ಸ್ಕ್ಯಾನರ್ ಹತ್ತಿರ ಹಿಡಿದು ಓದಾಗುವವರೆಗೆ ಕಾಯಿರಿ."
 };
-
+const setupHelp = {
+  "en-IN": "Welcome to Dispenzo. Please select your preferred language for instructions, then enable or disable voice assistant mode. Click continue when ready.",
+  "hi-IN": "डिस्पेंजो में आपका स्वागत है। कृपया निर्देशों के लिए अपनी पसंदीदा भाषा चुनें, फिर वॉयस असिस्टेंट मोड को सक्षम या अक्षम करें। तैयार होने पर जारी रखें पर क्लिक करें।",
+  "mr-IN": "डिस्पेंझोमध्ये आपले स्वागत आहे. कृपया सूचनांसाठी तुमची पसंतीची भाषा निवडा, नंतर व्हॉइस असिस्टंट मोड सक्षम किंवा अक्षम करा. तयार असताना चालू ठेवा वर क्लिक करा.",
+  "ta-IN": "டிஸ்பென்சோவிற்கு வரவேற்கிறோம். வழிமுறைகளுக்கு உங்கள் விருப்பமான மொழியைத் தேர்ந்தெடுக்கவும், பின்னர் குரல் உதவியாளர் பயன்முறையை இயக்கவும் அல்லது முடக்கவும். தயாராக இருக்கும்போது தொடரவும் என்பதைக் கிளிக் செய்யவும்.",
+  "te-IN": "డిస్పెంజోకు స్వాగతం. దయచేసి సూచనల కోసం మీ ఇష్టమైన భాషను ఎంచుకోండి, తర్వాత వాయిస్ అసిస్టెంట్ మోడ్‌ను ఎనేబుల్ లేదా డిసేబుల్ చేయండి. సిద్ధంగా ఉన్నప్పుడు కొనసాగించు క్లిక్ చేయండి.",
+  "kn-IN": "ಡಿಸ್ಪೆನ್ಜೋಗೆ ಸುಸ್ವಾಗತ. ದಯವಿಟ್ಟು ಸೂಚನೆಗಳಿಗಾಗಿ ನಿಮ್ಮ ಆದ್ಯತೆಯ ಭಾಷೆಯನ್ನು ಆಯ್ಕೆಮಾಡಿ, ನಂತರ ಧ್ವನಿ ಸಹಾಯಕ ಮೋಡ್ ಅನ್ನು ಸಕ್ರಿಯಗೊಳಿಸಿ ಅಥವಾ ನಿಷ್ಕ್ರಿಯಗೊಳಿಸಿ. ಸಿದ್ಧವಾದಾಗ ಮುಂದುವರಿಸು ಕ್ಲಿಕ್ ಮಾಡಿ."
+};
 
  const passwordHelp = {
   "en-IN": "Your card has been read successfully. Please enter your password carefully and click on ‘Submit’ to continue.",
@@ -467,13 +556,17 @@ const dispenseHelp = {
       
       
 
-      <VoiceGuide scripts={
-        authSuccess && userData 
-          ? dispenseHelp 
-          : rfidUID && !authSuccess 
-          ? passwordHelp 
-          : scanCardHelp
-      } />
+      <VoiceGuide 
+        scripts={
+          authSuccess && userData 
+            ? dispenseHelp 
+            : rfidUID && !authSuccess 
+            ? passwordHelp 
+            : scanCardHelp
+        }
+        autoPlay={voiceAssistantMode}
+        defaultLanguage={selectedLanguage}
+      />
 
       
       <div className="rfid-container">
@@ -643,6 +736,12 @@ const dispenseHelp = {
 const renderFingerprintView = () => (
   <div className="fp-page">
 
+    <VoiceGuide 
+      scripts={fingerprintHelp}
+      autoPlay={voiceAssistantMode}
+      defaultLanguage={selectedLanguage}
+    />
+
     {/* HEADER */}
     <div className="fp-header">
       <h1>DISPENZO</h1>
@@ -786,13 +885,151 @@ const renderFingerprintView = () => (
 
   return (
     <>
-      {/* Remove admin login popup from here */}
+      {/* Floating Settings Button */}
+      {currentView === "main" && (
+        <button 
+          className="floating-settings-btn" 
+          onClick={() => setShowSettings(true)}
+          title="Settings"
+        >
+          ⚙️
+        </button>
+      )}
+
+      {/* Settings Modal */}
+      {showSettings && (
+        <div className="settings-overlay">
+          <div className="settings-modal">
+            <div className="settings-header">
+              <h2>⚙️ Settings</h2>
+              {!firstVisit && (
+                <button 
+                  className="settings-close-btn" 
+                  onClick={() => setShowSettings(false)}
+                >
+                  ✕
+                </button>
+              )}
+            </div>
+
+            <div className="settings-content">
+              <div className="settings-section">
+                <h3>🌐 Language / भाषा</h3>
+                <div className="language-grid">
+                  <button 
+                    className={`lang-btn ${selectedLanguage === "en-IN" ? "active" : ""}`}
+                    onClick={() => setSelectedLanguage("en-IN")}
+                  >
+                    <span className="lang-name">English</span>
+                  </button>
+                  <button 
+                    className={`lang-btn ${selectedLanguage === "hi-IN" ? "active" : ""}`}
+                    onClick={() => setSelectedLanguage("hi-IN")}
+                  >
+                    <span className="lang-name">हिन्दी</span>
+                  </button>
+                  <button 
+                    className={`lang-btn ${selectedLanguage === "mr-IN" ? "active" : ""}`}
+                    onClick={() => setSelectedLanguage("mr-IN")}
+                  >
+                    <span className="lang-name">मराठी</span>
+                  </button>
+                  <button 
+                    className={`lang-btn ${selectedLanguage === "ta-IN" ? "active" : ""}`}
+                    onClick={() => setSelectedLanguage("ta-IN")}
+                  >
+                    <span className="lang-name">தமிழ்</span>
+                  </button>
+                  <button 
+                    className={`lang-btn ${selectedLanguage === "te-IN" ? "active" : ""}`}
+                    onClick={() => setSelectedLanguage("te-IN")}
+                  >
+                    <span className="lang-name">తెలుగు</span>
+                  </button>
+                  <button 
+                    className={`lang-btn ${selectedLanguage === "kn-IN" ? "active" : ""}`}
+                    onClick={() => setSelectedLanguage("kn-IN")}
+                  >
+                    <span className="lang-name">ಕನ್ನಡ</span>
+                  </button>
+                </div>
+              </div>
+
+              <div className="settings-section">
+                <h3>🔊 Voice Assistant</h3>
+                <p className="voice-desc">
+                  {selectedLanguage === "hi-IN" ? "स्वचालित आवाज मार्गदर्शन सक्षम करें" :
+                   selectedLanguage === "mr-IN" ? "स्वयंचलित आवाज मार्गदर्शन सक्षम करा" :
+                   selectedLanguage === "ta-IN" ? "தானியங்கி குரல் வழிகாட்டுதலை இயக்கவும்" :
+                   selectedLanguage === "te-IN" ? "స్వయంచాలక వాయిస్ గైడెన్స్ ఎనేబుల్ చేయండి" :
+                   selectedLanguage === "kn-IN" ? "ಸ್ವಯಂಚಾಲಿತ ಧ್ವನಿ ಮಾರ್ಗದರ್ಶನ ಸಕ್ರಿಯಗೊಳಿಸಿ" :
+                   "Enable automatic voice guidance"}
+                </p>
+                <div className="voice-toggle-container">
+                  <button 
+                    className={`voice-toggle-btn ${voiceAssistantMode ? "enabled" : "disabled"}`}
+                    onClick={() => {
+                      const newMode = !voiceAssistantMode;
+                      setVoiceAssistantMode(newMode);
+                      if (newMode) {
+                        setTimeout(() => playVoicePreview(), 400);
+                      } else {
+                        window.speechSynthesis.cancel();
+                      }
+                    }}
+                  >
+                    <span className="toggle-status-text">
+                      {voiceAssistantMode ? 
+                        (selectedLanguage === "hi-IN" ? "सक्षम" :
+                         selectedLanguage === "mr-IN" ? "सक्षम" :
+                         selectedLanguage === "ta-IN" ? "இயக்கப்பட்டது" :
+                         selectedLanguage === "te-IN" ? "ఎనేబుల్" :
+                         selectedLanguage === "kn-IN" ? "ಸಕ್ರಿಯ" :
+                         "ENABLED") :
+                        (selectedLanguage === "hi-IN" ? "अक्षम" :
+                         selectedLanguage === "mr-IN" ? "अक्षम" :
+                         selectedLanguage === "ta-IN" ? "முடக்கப்பட்டது" :
+                         selectedLanguage === "te-IN" ? "డిసేబుల్" :
+                         selectedLanguage === "kn-IN" ? "ನಿಷ್ಕ್ರಿಯ" :
+                         "DISABLED")}
+                    </span>
+                    <span className="toggle-indicator"></span>
+                  </button>
+                </div>
+              </div>
+
+              <button 
+                className="settings-save-btn"
+                onClick={saveSettings}
+              >
+                {firstVisit ? 
+                  (selectedLanguage === "hi-IN" ? "जारी रखें →" :
+                   selectedLanguage === "mr-IN" ? "सुरू ठेवा →" :
+                   selectedLanguage === "ta-IN" ? "தொடரவும் →" :
+                   selectedLanguage === "te-IN" ? "కొనసాగించు →" :
+                   selectedLanguage === "kn-IN" ? "ಮುಂದುವರಿಸಿ →" :
+                   "Continue →") :
+                  (selectedLanguage === "hi-IN" ? "सहेजें" :
+                   selectedLanguage === "mr-IN" ? "जतन करा" :
+                   selectedLanguage === "ta-IN" ? "சேமி" :
+                   selectedLanguage === "te-IN" ? "సేవ్ చేయి" :
+                   selectedLanguage === "kn-IN" ? "ಉಳಿಸು" :
+                   "Save Settings")}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
       
       {/* Payment Success Popup - keep this here */}
       {paymentSuccess && (
         <div className="payment-success-overlay">
           <div className="payment-success-popup">
-            <VoiceGuide scripts={paymentSuccessHelp} />
+            <VoiceGuide 
+              scripts={paymentSuccessHelp}
+              autoPlay={voiceAssistantMode}
+              defaultLanguage={selectedLanguage}
+            />
             
             {/* Left Section - Success Icon & Title */}
             <div className="success-left">

@@ -1,8 +1,8 @@
 import React, { useState, useEffect } from "react";
 import "./VoiceGuide.css";
 
-function VoiceGuide({ scripts }) {
-  const [lang, setLang] = useState("en-IN");
+function VoiceGuide({ scripts, autoPlay = false, defaultLanguage = "en-IN" }) {
+  const [lang, setLang] = useState(defaultLanguage);
   const [speaking, setSpeaking] = useState(false);
   const [voices, setVoices] = useState([]);
 
@@ -20,6 +20,40 @@ function VoiceGuide({ scripts }) {
       window.speechSynthesis.onvoiceschanged = null;
     };
   }, []);
+
+  // Auto-play when scripts change and autoPlay is enabled
+  useEffect(() => {
+    if (autoPlay && scripts?.[lang] && voices.length > 0) {
+      // Small delay to ensure smooth transition between pages
+      const timer = setTimeout(() => {
+        window.speechSynthesis.cancel();
+        
+        const utterance = new SpeechSynthesisUtterance(scripts[lang]);
+        const selectedVoice = getBestVoice();
+        if (selectedVoice) utterance.voice = selectedVoice;
+        
+        utterance.lang = lang;
+        utterance.rate = 1.2;
+        utterance.pitch = 1;
+        utterance.volume = 1;
+        
+        utterance.onstart = () => setSpeaking(true);
+        utterance.onend = () => setSpeaking(false);
+        utterance.onerror = () => setSpeaking(false);
+        
+        window.speechSynthesis.speak(utterance);
+      }, 500);
+      
+      return () => {
+        clearTimeout(timer);
+      };
+    }
+  }, [scripts, autoPlay, lang, voices]);
+
+  // Update language when defaultLanguage changes
+  useEffect(() => {
+    setLang(defaultLanguage);
+  }, [defaultLanguage]);
 
   const getBestVoice = () => {
     if (!voices.length) return null;
@@ -50,8 +84,8 @@ function VoiceGuide({ scripts }) {
 
     utterance.lang = lang;
     utterance.rate = 1.2;   // slower for rural clarity
-    utterance.pitch = 3;
-    utterance.volume = 3;
+    utterance.pitch = 1;
+    utterance.volume = 1;
 
     utterance.onstart = () => setSpeaking(true);
     utterance.onend = () => setSpeaking(false);
