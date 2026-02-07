@@ -36,7 +36,9 @@ const [fingerprintId, setFingerprintId] = useState(null);
   // IMPORTANT: Voice mode starts DISABLED - only enabled when user explicitly saves settings with voice ON
   const [voiceAssistantMode, setVoiceAssistantMode] = useState(false);
   // Track if user has confirmed settings this session (prevents auto-play on page load)
-  const [settingsConfirmed, setSettingsConfirmed] = useState(false);
+  const [settingsConfirmed, setSettingsConfirmed] = useState(() => {
+    return !!localStorage.getItem('dispenzo_visited'); // true if visited before, false if first time
+  });
   const [selectedLanguage, setSelectedLanguage] = useState("en-IN");
   
   const [fingerprintPending, setFingerprintPending] = useState(false);
@@ -570,7 +572,7 @@ const dispenseHelp = {
   "hi-IN": "सत्यापन सफल रहा। अब आप अपने हक के अनुसार पानी या अनाज प्राप्त कर सकते हैं, या आवश्यक हो तो भुगतान के लिए आगे बढ़ें।",
   "mr-IN": "तपासणी यशस्वी झाली आहे. आता तुम्ही तुमच्या हक्कानुसार पाणी किंवा धान्य घेऊ शकता किंवा गरज असल्यास पेमेंटसाठी पुढे जा.",
   "ta-IN": "சரிபார்ப்பு வெற்றிகரமாக முடிந்தது. இப்போது உங்கள் உரிமைக்கு ஏற்ப தண்ணீர் அல்லது தானியங்களை பெற்றுக்கொள்ளலாம் அல்லது பணம் செலுத்தலாம்.",
-  "te-IN": "ధృవీకరణ విజయవంతమైంది. ఇప్పుడు మీ అర్హత ప్రకారం నీరు లేదా ధాన్యాన్ని తీసుకోవచ్చు లేదా అవసరమైతే చెల్లింపుకు కొనసాగండి.",
+  "te-IN": "ధృవీకరణ విజయవంతమైంది. ఇప్పుడు మీ అర్హత ప్రకారం నీరు లేదా ధాన్యాన్ని తీసుకోవచ్చు లేదా అಗత్యమైతే చెల్లింపుకు కొనసాగండి.",
   "kn-IN": "ಪರಿಶೀಲನೆ ಯಶಸ್ವಿಯಾಗಿದೆ. ಈಗ ನಿಮ್ಮ ಹಕ್ಕಿನಂತೆ ನೀರು ಅಥವಾ ಧಾನ್ಯವನ್ನು ಪಡೆಯಬಹುದು ಅಥವಾ ಅಗತ್ಯವಿದ್ದರೆ ಪಾವತಿಗೆ ಮುಂದಾಗಬಹುದು."
 };
 
