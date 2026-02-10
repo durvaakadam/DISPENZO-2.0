@@ -66,6 +66,9 @@ const [fingerprintId, setFingerprintId] = useState(null);
 const [moisturePercent, setMoisturePercent] = useState(null);
 const [moistureRaw, setMoistureRaw] = useState(null);
   
+  // Control panel state
+  const [showControlPanel, setShowControlPanel] = useState(false);
+  
   // Payment success state
   const [paymentSuccess, setPaymentSuccess] = useState(false);
   const [paymentId, setPaymentId] = useState("");
@@ -216,6 +219,15 @@ const [moistureRaw, setMoistureRaw] = useState(null);
     });
 
     return () => socket.off("moistureData");
+  }, []);
+
+  // Listen for ESP32 command responses (optional)
+  useEffect(() => {
+    socket.on("arduinoCommandResponse", (response) => {
+      console.log('ESP32 Command Response:', response);
+    });
+
+    return () => socket.off("arduinoCommandResponse");
   }, []);
 
   useEffect(() => {
@@ -528,6 +540,11 @@ else {
     setFingerprintError(false);
     setFingerprintLogs([]);
     setCurrentView("main");
+  };
+
+  // Send command to ESP32 via socket
+  const sendArduinoCommand = (command) => {
+    socket.emit("arduinoCommand", command);
   };
 
 const scanCardHelp = {
@@ -936,13 +953,27 @@ const renderFingerprintView = () => (
     <>
       {/* Floating Settings Button */}
       {currentView === "main" && (
-        <button 
-          className="floating-settings-btn" 
-          onClick={() => setShowSettings(true)}
-          title="Settings"
-        >
-          ⚙️
-        </button>
+        <>
+          <button 
+            className="floating-settings-btn" 
+            onClick={() => setShowSettings(true)}
+            title="Settings"
+          >
+            ⚙️
+          </button>
+          
+          {/* Control Panel Button */}
+          <button 
+            className="floating-settings-btn" 
+            onClick={() => setShowControlPanel(true)}
+            title="ESP32 Control Panel"
+            style={{
+              bottom: '80px' // Position above settings button
+            }}
+          >
+            🎛️
+          </button>
+        </>
       )}
 
       {/* Settings Modal */}
@@ -950,7 +981,7 @@ const renderFingerprintView = () => (
         <div className="settings-overlay">
           <div className="settings-modal">
             <div className="settings-header">
-              <h2>⚙️ Settings</h2>
+              <h2> Settings</h2>
               {!firstVisit && (
                 <button 
                   className="settings-close-btn" 
@@ -969,7 +1000,7 @@ const renderFingerprintView = () => (
 
             <div className="settings-content">
               <div className="settings-section">
-                <h3>🌐 Language / भाषा</h3>
+                <h3> Language / भाषा</h3>
                 <div className="language-grid">
                   <button 
                     className={`lang-btn ${selectedLanguage === "en-IN" ? "active" : ""}`}
@@ -1185,6 +1216,447 @@ const renderFingerprintView = () => (
           autoPlay={voiceAssistantMode}
           defaultLanguage={selectedLanguage}
         />
+      )}
+      
+      {/* ESP32 Control Panel Modal */}
+      {showControlPanel && (
+        <div style={{
+          position: 'fixed',
+          top: 0,
+          left: 0,
+          width: '100%',
+          height: '100%',
+          backgroundColor: 'rgba(0,0,0,0.7)',
+          zIndex: 9999,
+          display: 'flex',
+          alignItems: 'center',
+          justifyContent: 'center'
+        }}>
+          <div style={{
+            backgroundColor: '#ffffff',
+            padding: '35px',
+            borderRadius: '12px',
+            maxWidth: '900px',
+            width: '90%',
+            maxHeight: '90vh',
+            overflow: 'auto',
+            boxShadow: '0 8px 32px rgba(0,0,0,0.15)'
+          }}>
+            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '30px', paddingBottom: '20px', borderBottom: '2px solid #f0f0f0' }}>
+              <h2 style={{ color: '#333', margin: 0, fontSize: '24px', fontWeight: '600' }}>ESP32 Control Panel</h2>
+              <button 
+                onClick={() => setShowControlPanel(false)}
+                style={{
+                  backgroundColor: '#dc3545',
+                  color: 'white',
+                  border: 'none',
+                  padding: '8px 16px',
+                  borderRadius: '6px',
+                  cursor: 'pointer',
+                  fontSize: '16px',
+                  fontWeight: '500',
+                  transition: 'all 0.2s'
+                }}
+                onMouseOver={(e) => e.target.style.backgroundColor = '#c82333'}
+                onMouseOut={(e) => e.target.style.backgroundColor = '#dc3545'}
+              >
+                Close
+              </button>
+            </div>
+            
+            {/* Commands Grid */}
+            <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: '15px', marginBottom: '20px' }}>
+              {/* Weight Control */}
+              <button 
+                onClick={() => sendArduinoCommand('T')} 
+                style={{
+                  backgroundColor: '#007bff',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '14px 18px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }}
+                onMouseOver={(e) => { e.target.style.backgroundColor = '#0056b3'; e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)'; }}
+                onMouseOut={(e) => { e.target.style.backgroundColor = '#007bff'; e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)'; }}
+              >
+                Tare Weight
+              </button>
+              
+              {/* Servo Control */}
+              <button 
+                onClick={() => sendArduinoCommand('LEFT')} 
+                style={{
+                  backgroundColor: '#007bff',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '14px 18px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }}
+                onMouseOver={(e) => { e.target.style.backgroundColor = '#0056b3'; e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)'; }}
+                onMouseOut={(e) => { e.target.style.backgroundColor = '#007bff'; e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)'; }}
+              >
+                Servo Left
+              </button>
+              
+              <button 
+                onClick={() => sendArduinoCommand('RIGHT')} 
+                style={{
+                  backgroundColor: '#007bff',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '14px 18px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }}
+                onMouseOver={(e) => { e.target.style.backgroundColor = '#0056b3'; e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)'; }}
+                onMouseOut={(e) => { e.target.style.backgroundColor = '#007bff'; e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)'; }}
+              >
+                Servo Right
+              </button>
+              
+              {/* Dispensing */}
+              <button 
+                onClick={() => sendArduinoCommand('water')} 
+                style={{
+                  backgroundColor: '#17a2b8',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '14px 18px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }}
+                onMouseOver={(e) => { e.target.style.backgroundColor = '#138496'; e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)'; }}
+                onMouseOut={(e) => { e.target.style.backgroundColor = '#17a2b8'; e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)'; }}
+              >
+                Dispense Water
+              </button>
+              
+              <button 
+                onClick={() => sendArduinoCommand('grains')} 
+                style={{
+                  backgroundColor: '#17a2b8',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '14px 18px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }}
+                onMouseOver={(e) => { e.target.style.backgroundColor = '#138496'; e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)'; }}
+                onMouseOut={(e) => { e.target.style.backgroundColor = '#17a2b8'; e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)'; }}
+              >
+                Dispense Grains
+              </button>
+              
+              <button 
+                onClick={() => sendArduinoCommand('ON')} 
+                style={{
+                  backgroundColor: '#28a745',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '14px 18px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }}
+                onMouseOver={(e) => { e.target.style.backgroundColor = '#218838'; e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)'; }}
+                onMouseOut={(e) => { e.target.style.backgroundColor = '#28a745'; e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)'; }}
+              >
+                Dispense ON
+              </button>
+              
+              <button 
+                onClick={() => sendArduinoCommand('OFF')} 
+                style={{
+                  backgroundColor: '#dc3545',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '14px 18px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }}
+                onMouseOver={(e) => { e.target.style.backgroundColor = '#c82333'; e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)'; }}
+                onMouseOut={(e) => { e.target.style.backgroundColor = '#dc3545'; e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)'; }}
+              >
+                Dispense OFF
+              </button>
+              
+              {/* Temperature */}
+              <button 
+                onClick={() => sendArduinoCommand('TEMP')} 
+                style={{
+                  backgroundColor: '#6c757d',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '14px 18px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }}
+                onMouseOver={(e) => { e.target.style.backgroundColor = '#5a6268'; e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)'; }}
+                onMouseOut={(e) => { e.target.style.backgroundColor = '#6c757d'; e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)'; }}
+              >
+                Start Temperature
+              </button>
+              
+              <button 
+                onClick={() => sendArduinoCommand('TSTOP')} 
+                style={{
+                  backgroundColor: '#6c757d',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '14px 18px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }}
+                onMouseOver={(e) => { e.target.style.backgroundColor = '#5a6268'; e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)'; }}
+                onMouseOut={(e) => { e.target.style.backgroundColor = '#6c757d'; e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)'; }}
+              >
+                Stop Temperature
+              </button>
+              
+              {/* Ultrasonic */}
+              <button 
+                onClick={() => sendArduinoCommand('ULTRA')} 
+                style={{
+                  backgroundColor: '#ffc107',
+                  color: '#212529',
+                  border: 'none',
+                  padding: '14px 18px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }}
+                onMouseOver={(e) => { e.target.style.backgroundColor = '#e0a800'; e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)'; }}
+                onMouseOut={(e) => { e.target.style.backgroundColor = '#ffc107'; e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)'; }}
+              >
+                Start Ultrasonic
+              </button>
+              
+              <button 
+                onClick={() => sendArduinoCommand('USTOP')} 
+                style={{
+                  backgroundColor: '#6c757d',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '14px 18px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }}
+                onMouseOver={(e) => { e.target.style.backgroundColor = '#5a6268'; e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)'; }}
+                onMouseOut={(e) => { e.target.style.backgroundColor = '#6c757d'; e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)'; }}
+              >
+                Stop Ultrasonic
+              </button>
+              
+              <button 
+                onClick={() => sendArduinoCommand('checklevel')} 
+                style={{
+                  backgroundColor: '#17a2b8',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '14px 18px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }}
+                onMouseOver={(e) => { e.target.style.backgroundColor = '#138496'; e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)'; }}
+                onMouseOut={(e) => { e.target.style.backgroundColor = '#17a2b8'; e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)'; }}
+              >
+                Check Level
+              </button>
+              
+              {/* Moisture */}
+              <button 
+                onClick={() => sendArduinoCommand('MOIST')} 
+                style={{
+                  backgroundColor: '#17a2b8',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '14px 18px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }}
+                onMouseOver={(e) => { e.target.style.backgroundColor = '#138496'; e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)'; }}
+                onMouseOut={(e) => { e.target.style.backgroundColor = '#17a2b8'; e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)'; }}
+              >
+                Start Moisture
+              </button>
+              
+              <button 
+                onClick={() => sendArduinoCommand('MSTOP')} 
+                style={{
+                  backgroundColor: '#6c757d',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '14px 18px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }}
+                onMouseOver={(e) => { e.target.style.backgroundColor = '#5a6268'; e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)'; }}
+                onMouseOut={(e) => { e.target.style.backgroundColor = '#6c757d'; e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)'; }}
+              >
+                Stop Moisture
+              </button>
+              
+              {/* Fingerprint */}
+              <button 
+                onClick={() => sendArduinoCommand('FP_MATCH')} 
+                style={{
+                  backgroundColor: '#6f42c1',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '14px 18px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }}
+                onMouseOver={(e) => { e.target.style.backgroundColor = '#5a32a3'; e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)'; }}
+                onMouseOut={(e) => { e.target.style.backgroundColor = '#6f42c1'; e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)'; }}
+              >
+                Fingerprint Match
+              </button>
+              
+              {/* Notifications */}
+              <button 
+                onClick={() => sendArduinoCommand('SEND')} 
+                style={{
+                  backgroundColor: '#28a745',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '14px 18px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }}
+                onMouseOver={(e) => { e.target.style.backgroundColor = '#218838'; e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)'; }}
+                onMouseOut={(e) => { e.target.style.backgroundColor = '#28a745'; e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)'; }}
+              >
+                Send Notification
+              </button>
+              
+              <button 
+                onClick={() => sendArduinoCommand('ALERT')} 
+                style={{
+                  backgroundColor: '#fd7e14',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '14px 18px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }}
+                onMouseOver={(e) => { e.target.style.backgroundColor = '#dc6502'; e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)'; }}
+                onMouseOut={(e) => { e.target.style.backgroundColor = '#fd7e14'; e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)'; }}
+              >
+                Send Alert
+              </button>
+              
+              <button 
+                onClick={() => sendArduinoCommand('STOPSEND')} 
+                style={{
+                  backgroundColor: '#6c757d',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '14px 18px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }}
+                onMouseOver={(e) => { e.target.style.backgroundColor = '#5a6268'; e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)'; }}
+                onMouseOut={(e) => { e.target.style.backgroundColor = '#6c757d'; e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)'; }}
+              >
+                Stop Notification
+              </button>
+              
+              {/* Card Scan */}
+              <button 
+                onClick={() => sendArduinoCommand('scancard')} 
+                style={{
+                  backgroundColor: '#007bff',
+                  color: '#fff',
+                  border: 'none',
+                  padding: '14px 18px',
+                  borderRadius: '8px',
+                  cursor: 'pointer',
+                  fontSize: '14px',
+                  fontWeight: '500',
+                  transition: 'all 0.2s',
+                  boxShadow: '0 2px 4px rgba(0,0,0,0.1)'
+                }}
+                onMouseOver={(e) => { e.target.style.backgroundColor = '#0056b3'; e.target.style.transform = 'translateY(-2px)'; e.target.style.boxShadow = '0 4px 8px rgba(0,0,0,0.15)'; }}
+                onMouseOut={(e) => { e.target.style.backgroundColor = '#007bff'; e.target.style.transform = 'translateY(0)'; e.target.style.boxShadow = '0 2px 4px rgba(0,0,0,0.1)'; }}
+              >
+                Scan Card
+              </button>
+            </div>
+          </div>
+        </div>
       )}
       
       {renderCurrentView()}

@@ -493,6 +493,17 @@ socket.on("checkTemperature", () => {
     esp32.write("MSTOP\n");
   });
 
+  // Generic ESP32 command handler (for control panel)
+  socket.on("arduinoCommand", (command) => {
+    console.log(`🎛️ ESP32 Control Panel: Sending command "${command}"`);
+    esp32.write(`${command.toUpperCase()}\n`);
+    socket.emit("arduinoCommandResponse", { 
+      success: true, 
+      command: command,
+      message: `Command "${command}" sent to ESP32` 
+    });
+  });
+
   socket.on("disconnect", () => {
     console.log("❌ Client disconnected");
   });
