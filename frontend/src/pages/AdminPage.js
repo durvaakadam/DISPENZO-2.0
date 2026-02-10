@@ -33,6 +33,157 @@ function AdminPage({
   const [ultraActive, setUltraActive] = useState(false);
   const [moistureActive, setMoistureActive] = useState(false);
 
+  // ===== GRAIN QUALITY STATE - MOVED INSIDE COMPONENT =====
+  const [grainQualityData, setGrainQualityData] = useState({
+    isRunning: false,
+    qualityScore: 100,
+    impuritiesDetected: 0,
+    status: 'CLEAN',
+    stability: 0,
+    backgroundIntensity: 0,
+    lastDetectionTime: null,
+    fps: 0,
+    detections: []
+  });
+
+  // ===== WEBSOCKET CONNECTION FOR GRAIN QUALITY =====
+  // ===== GRAIN QUALITY DATA LISTENER (using existing Socket.IO connection) =====
+// Add state for frame
+const [currentFrame, setCurrentFrame] = useState(null);
+
+// Update useEffect to handle frames
+useEffect(() => {
+  if (!socket) return;
+
+  const handleGrainQualityData = (data) => {
+    try {
+      console.log('📥 Received grain quality data:', data);
+      
+      if (data.parsed_data) {
+        const grainData = data.parsed_data;
+        
+        setGrainQualityData(prev => ({
+          ...prev,
+          impuritiesDetected: grainData.impurities_count || 0,
+          qualityScore: grainData.quality_score || 100,
+          status: grainData.status || 'CLEAN',
+          stability: grainData.stability || 0,
+          backgroundIntensity: grainData.background_intensity || 0,
+          lastDetectionTime: grainData.timestamp || null,
+          fps: grainData.fps || 0,
+          detections: grainData.detections || []
+        }));
+      }
+    } catch (error) {
+      console.error('❌ Error processing grain quality data:', error);
+    }
+  };
+
+  const handleGrainQualityFrame = (data) => {
+    try {
+      console.log('📸 Received frame data');
+      // Set base64 frame
+      setCurrentFrame(`data:image/jpeg;base64,${data.frame}`);
+    } catch (error) {
+      console.error('❌ Error processing frame:', error);
+    }
+  };
+
+  socket.on('grainQualityData', handleGrainQualityData);
+  socket.on('grainQualityFrame', handleGrainQualityFrame);
+
+  return () => {
+    socket.off('grainQualityData', handleGrainQualityData);
+    socket.off('grainQualityFrame', handleGrainQualityFrame);
+  };
+}, [socket]); 
+
+  // ===== GRAIN QUALITY HANDLERS =====
+  const handleGrainQualityToggle = async () => {
+    if (!grainQualityData.isRunning) {
+      // Start Python script
+      try {
+        console.log('🚀 Starting grain quality detection...');
+        const response = await fetch('http://localhost:5000/api/grain-quality/start', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          console.log('✅ Detection started:', result.message);
+          setGrainQualityData(prev => ({ ...prev, isRunning: true }));
+        } else {
+          const errorData = await response.json();
+          console.error('❌ Failed to start:', errorData);
+          alert('Failed to start detection: ' + (errorData.error || 'Unknown error'));
+        }
+      } catch (error) {
+        console.error('❌ Network error:', error);
+        alert('Failed to start detection. Make sure the backend server is running on port 5000.');
+      }
+    } else {
+      // Stop Python script
+      try {
+        console.log('🛑 Stopping grain quality detection...');
+        const response = await fetch('http://localhost:5000/api/grain-quality/stop', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json'
+          }
+        });
+        
+        if (response.ok) {
+          const result = await response.json();
+          console.log('✅ Detection stopped:', result.message);
+          setGrainQualityData(prev => ({ 
+            ...prev, 
+            isRunning: false,
+            impuritiesDetected: 0,
+            status: 'CLEAN',
+            detections: [],
+            qualityScore: 100
+          }));
+        }
+      } catch (error) {
+        console.error('❌ Failed to stop:', error);
+        alert('Failed to stop detection.');
+      }
+    }
+  };
+
+  const handleRecalibrate = async () => {
+    try {
+      console.log('🔄 Requesting recalibration...');
+      const response = await fetch('http://localhost:5000/api/grain-quality/recalibrate', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json'
+        }
+      });
+      
+      if (response.ok) {
+        alert('✅ Background recalibration initiated');
+      }
+    } catch (error) {
+      console.error('❌ Failed to recalibrate:', error);
+      alert('Failed to recalibrate background');
+    }
+  };
+
+  const handleGrainQualityAlert = () => {
+    console.log('🚨 Alert acknowledged');
+    setGrainQualityData(prev => ({
+      ...prev,
+      impuritiesDetected: 0,
+      status: 'CLEAN',
+      detections: []
+    }));
+  };
+
+  // ===== EXISTING HANDLERS =====
   const handleLogin = () => {
     if (password === ADMIN_PASSWORD) {
       setAuthenticated(true);
@@ -162,8 +313,7 @@ function AdminPage({
     <div className={`admin-page ${isDarkMode ? "dark-mode" : "light-mode"}`}>
       {/* Header */}
       <div className="admin-header">
-        <h1>DISPENZO Control Center
-</h1>
+        <h1>DISPENZO Control Center</h1>
         <div className="header-right">
           <button
             className="theme-toggle-btn"
@@ -210,14 +360,13 @@ function AdminPage({
           </div>
         </div>
         <div className="stat-card highlight">
-  <div className="stat-icon">🏪</div>
-  <div className="stat-content">
-    <p className="stat-label">Fair Price Shop</p>
-    <p className="stat-value">FPS 042</p>
-    <p className="stat-sub">📍 Andheri East, Mumbai</p>
-  </div>
-</div>
-
+          <div className="stat-icon">🏪</div>
+          <div className="stat-content">
+            <p className="stat-label">Fair Price Shop</p>
+            <p className="stat-value">FPS 042</p>
+            <p className="stat-sub">📍 Andheri East, Mumbai</p>
+          </div>
+        </div>
       </div>
 
       <div className="admin-container">
@@ -388,6 +537,22 @@ function AdminPage({
                     <span className="toggle-icon">💧</span>
                     <span className="toggle-text">Moisture</span>
                     <span className="toggle-indicator">🟢</span>
+                  </button>
+
+                  {/* NEW GRAIN QUALITY BUTTON */}
+                  <button
+                    className={`monitor-toggle ${
+                      selectedMonitor === "grainQuality" ? "active" : ""
+                    }`}
+                    onClick={() => setSelectedMonitor("grainQuality")}
+                  >
+                    <span className="toggle-icon">🌾</span>
+                    <span className="toggle-text">Grain Quality</span>
+                    <span className={`toggle-indicator ${
+                      grainQualityData.impuritiesDetected > 0 ? "alert" : ""
+                    }`}>
+                      {grainQualityData.impuritiesDetected > 0 ? "🔴" : "🟢"}
+                    </span>
                   </button>
                 </div>
                 
@@ -571,6 +736,8 @@ function AdminPage({
                         </div>
                       </div>
                     </div>
+
+
                   )}
 
                   {/* Moisture Details */}
@@ -651,7 +818,163 @@ function AdminPage({
                         </div>
                       </div>
                     </div>
+
+                    
                   )}
+                  {/* Grain Quality Details - NEW */}
+  {selectedMonitor === "grainQuality" && (
+    <div className="monitor-detail">
+      <div className="detail-graph">
+        <div className="graph-placeholder">
+          <div className="graph-title">Grain Quality Analysis (Live)</div>
+          <div className="graph-chart">
+            <div className="quality-visual">
+              {grainQualityData.isRunning ? (
+  <div className="live-feed-container">
+    {/* LIVE VIDEO FEED */}
+    <div className="video-feed-wrapper">
+      {currentFrame ? (
+        <img 
+          src={currentFrame}
+          alt="Live Detection Feed"
+          className="live-video-feed"
+        />
+      ) : (
+        <div className="loading-frame">Loading feed...</div>
+      )}
+    </div>
+    
+    <div className="detection-stats">
+      <div className="stat-item">
+        <span className="stat-icon">🔴</span>
+        <span className="stat-value">{grainQualityData.impuritiesDetected}</span>
+        <span className="stat-label">Stones Detected</span>
+      </div>
+      <div className="stat-item">
+        <span className="stat-icon">📊</span>
+        <span className="stat-value">{grainQualityData.qualityScore}</span>
+        <span className="stat-label">Quality Score</span>
+      </div>
+      <div className="stat-item">
+        <span className="stat-icon">⚡</span>
+        <span className="stat-value">{grainQualityData.fps.toFixed(1)}</span>
+        <span className="stat-label">FPS</span>
+      </div>
+    </div>
+  </div>
+) : (
+  <div className="quality-placeholder">
+    <div className="placeholder-icon">🌾</div>
+    <div className="placeholder-text">Click "Start Detection" to begin live analysis</div>
+  </div>
+)}
+            </div>
+          </div>
+        </div>
+      </div>
+      
+      <div className="detail-card">
+        <div className="detail-header">
+          <h3>🌾 Grain Quality</h3>
+          <span className="detail-status">
+            {grainQualityData.impuritiesDetected > 0 ? "🔴 Alert" : "🟢 Clean"}
+          </span>
+        </div>
+        
+        <div className="detail-card-main-value">
+          <div className="value-number">
+            {grainQualityData.qualityScore}
+          </div>
+          <div className="value-unit">/100</div>
+        </div>
+
+        <div className="detail-info">
+          <div className="detail-row">
+            <span className="detail-label">Status:</span>
+            <span className="detail-value" style={{
+              color: grainQualityData.status === 'CONTAMINATION DETECTED' ? '#ff4444' : '#4CAF50'
+            }}>
+              {grainQualityData.status}
+            </span>
+          </div>
+          
+          <div className="detail-row">
+            <span className="detail-label">Impurities Count:</span>
+            <span className="detail-value">
+              {grainQualityData.impuritiesDetected} stone(s)
+            </span>
+          </div>
+
+          <div className="detail-row">
+            <span className="detail-label">Stability:</span>
+            <span className="detail-value">
+              {grainQualityData.stability}/5 frames
+            </span>
+          </div>
+
+          <div className="detail-row">
+            <span className="detail-label">Background Calibration:</span>
+            <span className="detail-value">
+              {grainQualityData.backgroundIntensity > 0 
+                ? `${grainQualityData.backgroundIntensity.toFixed(0)}` 
+                : 'Not calibrated'}
+            </span>
+          </div>
+
+          <div className="detail-row">
+            <span className="detail-label">Last Detection:</span>
+            <span className="detail-value">
+              {grainQualityData.lastDetectionTime || 'None'}
+            </span>
+          </div>
+
+          <div className="detail-row">
+            <span className="detail-label">Camera Status:</span>
+            <span className="detail-value">
+              {grainQualityData.isRunning ? '🟢 Active' : '⭕ Inactive'}
+            </span>
+          </div>
+
+          <div className="range-fields">
+            <div className="range-field">
+              <span className="range-label">Min Quality</span>
+              <span className="range-value">60/100</span>
+            </div>
+            <div className="range-field">
+              <span className="range-label">Target Quality</span>
+              <span className="range-value">85+/100</span>
+            </div>
+          </div>
+
+          <button
+            className={`detail-btn detail-btn-sm ${
+              grainQualityData.isRunning ? "active" : ""
+            }`}
+            onClick={handleGrainQualityToggle}
+          >
+            {grainQualityData.isRunning ? "⏹ Stop Detection" : "▶ Start Detection"}
+          </button>
+
+          {grainQualityData.isRunning && (
+            <button
+              className="detail-btn detail-btn-sm recalibrate-btn"
+              onClick={handleRecalibrate}
+            >
+              🔄 Recalibrate Background
+            </button>
+          )}
+
+          {grainQualityData.impuritiesDetected > 0 && (
+            <div className="detail-buttons">
+              <button className="detail-btn alert" onClick={handleGrainQualityAlert}>
+                🚨 Acknowledge Alert
+              </button>
+            </div>
+          )}
+        </div>
+      </div>
+    </div>
+  )}
                 </div>
               </div>
             </div>
