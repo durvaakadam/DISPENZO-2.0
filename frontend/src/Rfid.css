@@ -507,8 +507,8 @@
 }
 
 .fp-scanner {
-  width: 420px;
-  height: 420px;
+  width: 320px;
+  height: 320px;
   border-radius: 50%;
   border: 2px solid #667eea;
   position: relative;
@@ -537,6 +537,7 @@
 
 .fp-scanner.success {
   border-color: #10b981;
+  
 }
 
 .fp-scanner.fail {
@@ -551,9 +552,19 @@
 strong{
   color: #000000;
 }
-.fp-status.scanning { color: #667eea; }
-.fp-status.success { color: #10b981; }
-.fp-status.fail { color: #ef4444; }
+.fp-status.scanning {
+  color: #667eea;
+  font-size: 20px;
+}
+
+.fp-status.success { 
+  color: #10b981; 
+  font-size: 20px;
+}
+.fp-status.fail { 
+  color: #ef4444; 
+  font-size: 20px;
+}
 p {
   font-weight: 700;
   color: #000;
@@ -588,11 +599,13 @@ p {
 .fp-btn.retry {
   background: #ef4444;
   color: white;
+  font-size: 25px;
 }
 
 .fp-btn.proceed {
   background: linear-gradient(90deg, #667eea, #10b981);
   color: white;
+  font-size: 25px;
 }
 
 /* FOOTER */
@@ -639,22 +652,29 @@ p {
   margin-top: 10px;
   text-align: center;
 }
-fp-text scanning{
+.fp-text.scanning{
   color: #000000;
   font-size: 30px;
 }
 .fp-status.scanning {
   color: #667eea;
+  font-size: 30px;
 }
+
 
 .fp-status.success {
   color: #10b981;
 }
-
+.fp-text.success {
+  font-size: 20px;    
+}
 .fp-status.fail {
   color: #ef4444;
+  font-size:20px;
 }
-
+.fp-text.fail{
+  font-size: 20px;
+}
 /* LOG PANEL */
 .fp-terminal {
   background: #1e293b;
@@ -926,7 +946,7 @@ button:hover {
 
 .dispense-btn {
   padding: 18px 32px; /* bigger button size */
-  font-size: 20px;    /* bigger text */
+  font-size: 25px;    /* bigger text */
   font-weight: bold;
   border-radius: 12px; /* more rounded corners */
   cursor: pointer;
@@ -1316,7 +1336,7 @@ button:hover {
   border: none;
   font-weight: 600;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 25px;
 }
 
 .water-btn {
@@ -2324,7 +2344,7 @@ button:hover {
     color 0.5s cubic-bezier(0.4, 0, 0.2, 1),
     opacity 0.5s cubic-bezier(0.4, 0, 0.2, 1);
 }
-
+/* 
 .toggle-indicator {
   position: absolute;
   width: 38px;
@@ -2340,7 +2360,7 @@ button:hover {
     0 2px 8px rgba(0, 0, 0, 0.2),
     0 0 0 2px rgba(255, 255, 255, 0.1);
   will-change: left, right, transform;
-}
+} */
 
 .voice-toggle-btn.enabled .toggle-indicator {
   left: auto;

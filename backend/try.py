@@ -425,7 +425,7 @@ if sys.platform == 'win32':
 class SmartRiceImpurityDetector:
     """Smart detector that streams frames via base64"""
     
-    def __init__(self, droidcam_url="http://192.168.0.102:4747/video"):
+    def __init__(self, droidcam_url="http://10.242.149.224:4747/video"):
         self.droidcam_url = droidcam_url
         self.cap = None
         self.impurity_counter = 0
@@ -776,6 +776,6 @@ class SmartRiceImpurityDetector:
     
 if __name__ == "__main__":
     detector = SmartRiceImpurityDetector(
-        droidcam_url="http://192.168.0.102:4747/video"
+        droidcam_url="http://10.242.149.224:4747/video"
     )
     detector.run()

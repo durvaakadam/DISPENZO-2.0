@@ -90,7 +90,7 @@ process.stderr.write = function(chunk, encoding, callback) {
 };
 
 // ✅ ESP32 Serial Setup
-const esp32 = new SerialPort({ path: "COM3", baudRate: 115200 });
+const esp32 = new SerialPort({ path: "COM5", baudRate: 115200 });
 const parser = esp32.pipe(new ReadlineParser({ delimiter: "\n" }));
 
 esp32.on("open", () => console.log("✅ Serial Port Opened on COM3"));
@@ -129,7 +129,7 @@ app.post('/api/grain-quality/start', (req, res) => {
 
   console.log('🌾 Starting grain quality detection...');
   
-  const pythonScriptPath = 'C:/Users/shruti/OneDrive/Desktop/PROJECTs/DISPENZO/DISPENZO-2.0/backend/try.py';
+  const pythonScriptPath = 'C:/PROJECTS/DISPENZO-2.0/backend/try.py';
   
   pythonProcess = spawn('python', [pythonScriptPath]);
 

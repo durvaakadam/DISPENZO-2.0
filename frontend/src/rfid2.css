@@ -860,7 +860,7 @@ button:hover {
 
 .dispense-btn {
   padding: 18px 32px; /* bigger button size */
-  font-size: 20px;    /* bigger text */
+  font-size: 25px;    /* bigger text */
   font-weight: bold;
   border-radius: 12px; /* more rounded corners */
   cursor: pointer;
@@ -1245,7 +1245,7 @@ button:hover {
   border: none;
   font-weight: 600;
   cursor: pointer;
-  font-size: 14px;
+  font-size: 25px;
 }
 
 .water-btn {

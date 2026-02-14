@@ -331,7 +331,7 @@ useEffect(() => {
       {/* Quick Stats */}
       <div className="quick-stats">
         <div className="stat-card">
-          <div className="stat-icon">👥</div>
+          
           <div className="stat-content">
             <p className="stat-label">Total Beneficiaries</p>
             <p className="stat-value">{users.length}</p>
@@ -339,28 +339,28 @@ useEffect(() => {
         </div>
         
         <div className={`stat-card ${temperatureAlert ? "alert" : ""}`}>
-          <div className="stat-icon">🌡️</div>
+          
           <div className="stat-content">
             <p className="stat-label">Temperature</p>
             <p className="stat-value">{temperatureValue || "—"}°C</p>
           </div>
         </div>
         <div className={`stat-card ${levelAlert ? "alert" : ""}`}>
-          <div className="stat-icon">📦</div>
+          
           <div className="stat-content">
             <p className="stat-label">Container Level</p>
             <p className="stat-value">{containerLevel || "—"}%</p>
           </div>
         </div>
         <div className="stat-card">
-          <div className="stat-icon">📍</div>
+          
           <div className="stat-content">
             <p className="stat-label">Distance</p>
             <p className="stat-value">{ultrasonicDistance || "—"}cm</p>
           </div>
         </div>
         <div className="stat-card highlight">
-          <div className="stat-icon">🏪</div>
+          
           <div className="stat-content">
             <p className="stat-label">Fair Price Shop</p>
             <p className="stat-value">FPS 042</p>
@@ -488,7 +488,7 @@ useEffect(() => {
           {adminView === "monitoring" && (
             <div className="monitoring-section">
               <div className="monitoring-header">
-                <h2>📊 Real-time Monitoring Dashboard</h2>
+                <h2>Real-time Monitoring Dashboard</h2>
               </div>
 
               <div className="monitoring-layout">
@@ -536,7 +536,7 @@ useEffect(() => {
                   >
                     <span className="toggle-icon">💧</span>
                     <span className="toggle-text">Moisture</span>
-                    <span className="toggle-indicator">🟢</span>
+                    
                   </button>
 
                   {/* NEW GRAIN QUALITY BUTTON */}
@@ -548,11 +548,7 @@ useEffect(() => {
                   >
                     <span className="toggle-icon">🌾</span>
                     <span className="toggle-text">Grain Quality</span>
-                    <span className={`toggle-indicator ${
-                      grainQualityData.impuritiesDetected > 0 ? "alert" : ""
-                    }`}>
-                      {grainQualityData.impuritiesDetected > 0 ? "🔴" : "🟢"}
-                    </span>
+                    
                   </button>
                 </div>
                 
@@ -752,11 +748,17 @@ useEffect(() => {
                                 className="gauge-circle"
                                 style={{
                                   "--percentage": `${(moisturePercent || 0) * 3.6}deg`,
-                                  background: `conic-gradient(#4CAF50 0deg, #4CAF50 234deg, #3e3f5e 234deg, #3e3f5e 360deg)`,
+                                  background: `conic-gradient(#4CAF50 0deg, #4CAF50 ${(moisturePercent || 0) * 3.6}deg, #e0e0e0 ${(moisturePercent || 0) * 3.6}deg, #e0e0e0 360deg)`,
+                                  boxShadow: '0 8px 25px rgba(76, 175, 80, 0.3), inset 0 0 20px rgba(0,0,0,0.1)',
+                                  border: '4px solid rgba(76, 175, 80, 0.2)'
                                 }}
                               >
-                                <div className="gauge-inner">
-                                  <div></div>
+                                <div className="gauge-inner" style={{ background: '#ffffff' }}>
+                                  <div style={{ fontSize: '48px', fontWeight: 'bold', color: '#4CAF50' }}>
+                                    {moisturePercent !== null ? moisturePercent : 0}
+                                    <span style={{ fontSize: '24px' }}>%</span>
+                                  </div>
+                                  <div style={{ fontSize: '14px', color: '#666', marginTop: '5px' }}>Moisture</div>
                                 </div>
                               </div>
                               <div className="temp-trend" style={{ color: "#4CAF50" }}>

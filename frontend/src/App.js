@@ -809,10 +809,7 @@ const renderFingerprintView = () => (
   <div className="fp-page">
 
     {/* HEADER */}
-    <div className="fp-header">
-      <h1>DISPENZO</h1>
-      <span>Secure Ration Distribution System</span>
-    </div>
+   
 
     {/* BODY */}
     <div className="fp-body">
@@ -879,7 +876,9 @@ const renderFingerprintView = () => (
         {fingerprintStatus === "success" && (
           <p className="fp-status success">
             Fingerprint Verified<br />
-            ID: {fingerprintId}
+            <span style={{ fontSize: '32px', fontWeight: '900', display: 'block', marginTop: '8px' }}>
+              ID: {fingerprintId}
+            </span>
           </p>
         )}
 
